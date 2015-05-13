@@ -1,0 +1,147 @@
+{
+	"ImportPath": "bitbucket.org/dukex/uhura-worker",
+	"GoVersion": "go1.4.2",
+	"Deps": [
+		{
+			"ImportPath": "bitbucket.org/dukex/uhura-api/channels",
+			"Rev": "dd106ca988d7072bd8bdf823f42615280c02424e"
+		},
+		{
+			"ImportPath": "bitbucket.org/dukex/uhura-api/database",
+			"Rev": "dd106ca988d7072bd8bdf823f42615280c02424e"
+		},
+		{
+			"ImportPath": "bitbucket.org/dukex/uhura-api/entities",
+			"Rev": "dd106ca988d7072bd8bdf823f42615280c02424e"
+		},
+		{
+			"ImportPath": "bitbucket.org/dukex/uhura-api/helpers",
+			"Rev": "dd106ca988d7072bd8bdf823f42615280c02424e"
+		},
+		{
+			"ImportPath": "bitbucket.org/dukex/uhura-api/models",
+			"Rev": "dd106ca988d7072bd8bdf823f42615280c02424e"
+		},
+		{
+			"ImportPath": "bitbucket.org/dukex/uhura-api/parser",
+			"Rev": "dd106ca988d7072bd8bdf823f42615280c02424e"
+		},
+		{
+			"ImportPath": "code.google.com/p/go-charset/charset",
+			"Comment": "null-32",
+			"Rev": "ebbeafdc430eb6c7e44e9a730a38eaff4c56ba3a"
+		},
+		{
+			"ImportPath": "code.google.com/p/go-charset/data",
+			"Comment": "null-32",
+			"Rev": "ebbeafdc430eb6c7e44e9a730a38eaff4c56ba3a"
+		},
+		{
+			"ImportPath": "code.google.com/p/go.crypto/bcrypt",
+			"Comment": "null-191",
+			"Rev": "7aa593ce8ceaf0199504fff27455bbb60eedabc7"
+		},
+		{
+			"ImportPath": "code.google.com/p/go.crypto/blowfish",
+			"Comment": "null-191",
+			"Rev": "7aa593ce8ceaf0199504fff27455bbb60eedabc7"
+		},
+		{
+			"ImportPath": "code.google.com/p/goauth2/oauth",
+			"Comment": "weekly-56",
+			"Rev": "afe77d958c701557ec5dc56f6936fcc194d15520"
+		},
+		{
+			"ImportPath": "github.com/PuerkitoBio/goquery",
+			"Comment": "v0.3.2-74-g5203bc0",
+			"Rev": "5203bc06dacf2192e0f4a9879010b9f14c861d14"
+		},
+		{
+			"ImportPath": "github.com/andybalholm/cascadia",
+			"Rev": "54abbbf07a45a3ef346ebe903e0715d9a3c19352"
+		},
+		{
+			"ImportPath": "github.com/bitly/go-simplejson",
+			"Comment": "v0.4.3-30-g18db6e6",
+			"Rev": "18db6e68d8fd9cbf2e8ebe4c81a78b96fd9bf05a"
+		},
+		{
+			"ImportPath": "github.com/dchest/uniuri",
+			"Rev": "bc4af7603a3e0ce9d58009f82fca481555182e1c"
+		},
+		{
+			"ImportPath": "github.com/dukex/login2",
+			"Rev": "c49bc1d83e290816d616dd198d7104aca4dfc718"
+		},
+		{
+			"ImportPath": "github.com/dukex/mixpanel",
+			"Rev": "353602d3c3d2779e4b1d73c6d86f33eee018cf4e"
+		},
+		{
+			"ImportPath": "github.com/fiam/gounidecode/unidecode",
+			"Rev": "311ebb7422d3ff70cc1d064c5a297520ff5f304a"
+		},
+		{
+			"ImportPath": "github.com/garyburd/redigo/internal",
+			"Rev": "535138d7bcd717d6531c701ef5933d98b1866257"
+		},
+		{
+			"ImportPath": "github.com/garyburd/redigo/redis",
+			"Rev": "535138d7bcd717d6531c701ef5933d98b1866257"
+		},
+		{
+			"ImportPath": "github.com/gin-gonic/gin",
+			"Comment": "v0.6-2-gbd2c864",
+			"Rev": "bd2c8643467007ae1be5c108306e14f1e768c10b"
+		},
+		{
+			"ImportPath": "github.com/gorilla/context",
+			"Rev": "14f550f51af52180c2eefed15e5fd18d63c0a64a"
+		},
+		{
+			"ImportPath": "github.com/gorilla/securecookie",
+			"Rev": "155134204c034796bcd7a72c1e1b53ba005735c6"
+		},
+		{
+			"ImportPath": "github.com/gorilla/sessions",
+			"Rev": "1ace0650f7b7ebbf58eb835609698352efeb9cc9"
+		},
+		{
+			"ImportPath": "github.com/jinzhu/gorm",
+			"Rev": "25772352c2e1cb6a9c00472999015a32dd646218"
+		},
+		{
+			"ImportPath": "github.com/jrallison/go-workers",
+			"Rev": "365a7885561f92afb9155dbc81e642fe875c94cd"
+		},
+		{
+			"ImportPath": "github.com/jteeuwen/go-pkg-rss",
+			"Rev": "2b6dc03edeb0bb531e0d85dd973e8ac0d7187884"
+		},
+		{
+			"ImportPath": "github.com/jteeuwen/go-pkg-xmlx",
+			"Rev": "3623786eeb421657b11acad4aa1a9b89683c031f"
+		},
+		{
+			"ImportPath": "github.com/julienschmidt/httprouter",
+			"Rev": "8c199fb6259ffc1af525cc3ad52ee60ba8359669"
+		},
+		{
+			"ImportPath": "github.com/lib/pq",
+			"Comment": "go1.0-cutoff-47-g93e9980",
+			"Rev": "93e9980741c9e593411b94e07d5bad8cfb4809db"
+		},
+		{
+			"ImportPath": "github.com/mattn/go-colorable",
+			"Rev": "d67e0b7d1797975196499f79bcc322c08b9f218b"
+		},
+		{
+			"ImportPath": "github.com/op/go-logging",
+			"Rev": "e5fb9bb8a3a168cc269b38f092b65d2e18cebb9a"
+		},
+		{
+			"ImportPath": "golang.org/x/net/html",
+			"Rev": "84ba27dd5b2d8135e9da1395277f2c9333a2ffda"
+		}
+	]
+}

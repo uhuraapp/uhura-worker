@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"bitbucket.org/dukex/uhura-api/channels"
 	"bitbucket.org/dukex/uhura-api/database"
@@ -16,7 +17,8 @@ import (
 	"github.com/jrallison/go-workers"
 )
 
-const ImageHost string = "http://arcane-forest-5063.herokuapp.com"
+const imageHost string = "http://arcane-forest-5063.herokuapp.com"
+const weekHours time.Duration = 24 * 7
 
 var p gorm.DB
 
@@ -77,11 +79,13 @@ func sync(message *workers.Msg) {
 
 	p.Save(&channel)
 
-	channels.CreateLinks(channelFeed.Links, channel.Id, p)
+	channels.CreateLinks(R(channelFeed.Links), channel.Id, p)
 
 	// 	// [ ] episodes := FindOrCreateEpisodes(channel, xml)
-	// 	// [ ] GetDelayBetweenEpisodes(episodes)
-	// 	// [ ] SetNewRun(channel)
+
+	// 	// [x] GetDelayBetweenEpisodes(episodes)
+	// 	// [x] SetNewRun(channel)
+	scheduleNextRun(channelFeed, id)
 }
 
 func updateChannel(model *models.Channel, feed *parser.Channel) *models.Channel {
@@ -90,25 +94,76 @@ func updateChannel(model *models.Channel, feed *parser.Channel) *models.Channel 
 
 func cacheImage(model *models.Channel) {
 	currentImageURL := model.ImageUrl
-	if strings.Contains(currentImageURL, ImageHost) {
+	if strings.Contains(currentImageURL, imageHost) {
 		// Check image is OK
 		return
 	}
 
-	resp, err := http.Get(ImageHost + "/resolve?url=" + currentImageURL)
+	resp, err := http.Get(imageHost + "/resolve?url=" + currentImageURL)
 	if err != nil {
 		return
 	}
 
 	newImageURL := resp.Request.URL.String()
 
-	if resp.StatusCode == 200 && strings.Contains(newImageURL, ImageHost+"/cache") {
+	if resp.StatusCode == 200 && strings.Contains(newImageURL, imageHost+"/cache") {
 		model.ImageUrl = newImageURL
 	}
+}
+
+func scheduleNextRun(channelFeed *parser.Channel, id int64) {
+	if len(channelFeed.Episodes) > 1 {
+		t0, errT1 := channelFeed.Episodes[0].Feed.ParsedPubDate()
+		if errT1 != nil {
+			scheduleNextWeek(id)
+			return
+		}
+
+		t1, errT2 := channelFeed.Episodes[1].Feed.ParsedPubDate()
+		if errT2 != nil {
+			scheduleNextWeek(id)
+			return
+		}
+
+		nextRunAt := t0.Add(t0.Sub(t1))
+
+		now := time.Now()
+		if !nextRunAt.After(now) {
+			scheduleNextWeek(id)
+			return
+		}
+
+		scheduleAt(nextRunAt, id)
+	} else {
+		scheduleNextWeek(id)
+		return
+	}
+}
+
+func scheduleAt(at time.Time, id int64) {
+	workers.EnqueueAt("sync", "sync", at, id)
+}
+
+func scheduleNextWeek(id int64) {
+	now := time.Now()
+	at := now.Add(time.Hour * weekHours)
+	scheduleAt(at, id)
 }
 
 func checkError(err error) {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func R(s []string) []string {
+	m := map[string]bool{}
+	t := []string{}
+	for _, v := range s {
+		if _, seen := m[v]; !seen {
+			t = append(t, v)
+			m[v] = true
+		}
+	}
+	return t
 }

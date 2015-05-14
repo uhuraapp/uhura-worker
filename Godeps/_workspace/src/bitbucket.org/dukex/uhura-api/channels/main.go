@@ -1,8 +1,6 @@
 package channels
 
-import (
-	"github.com/op/go-logging"
-)
+import "github.com/op/go-logging"
 
 var log = logging.MustGetLogger("example")
 

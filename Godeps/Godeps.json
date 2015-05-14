@@ -4,27 +4,27 @@
 	"Deps": [
 		{
 			"ImportPath": "bitbucket.org/dukex/uhura-api/channels",
-			"Rev": "dd106ca988d7072bd8bdf823f42615280c02424e"
+			"Rev": "46d8833ef976d5ef24d215ef915c4942795287df"
 		},
 		{
 			"ImportPath": "bitbucket.org/dukex/uhura-api/database",
-			"Rev": "dd106ca988d7072bd8bdf823f42615280c02424e"
+			"Rev": "46d8833ef976d5ef24d215ef915c4942795287df"
 		},
 		{
 			"ImportPath": "bitbucket.org/dukex/uhura-api/entities",
-			"Rev": "dd106ca988d7072bd8bdf823f42615280c02424e"
+			"Rev": "46d8833ef976d5ef24d215ef915c4942795287df"
 		},
 		{
 			"ImportPath": "bitbucket.org/dukex/uhura-api/helpers",
-			"Rev": "dd106ca988d7072bd8bdf823f42615280c02424e"
+			"Rev": "46d8833ef976d5ef24d215ef915c4942795287df"
 		},
 		{
 			"ImportPath": "bitbucket.org/dukex/uhura-api/models",
-			"Rev": "dd106ca988d7072bd8bdf823f42615280c02424e"
+			"Rev": "46d8833ef976d5ef24d215ef915c4942795287df"
 		},
 		{
 			"ImportPath": "bitbucket.org/dukex/uhura-api/parser",
-			"Rev": "dd106ca988d7072bd8bdf823f42615280c02424e"
+			"Rev": "46d8833ef976d5ef24d215ef915c4942795287df"
 		},
 		{
 			"ImportPath": "code.google.com/p/go-charset/charset",
@@ -112,15 +112,15 @@
 		},
 		{
 			"ImportPath": "github.com/jrallison/go-workers",
-			"Rev": "365a7885561f92afb9155dbc81e642fe875c94cd"
+			"Rev": "4f7974846994c67567657dbe3778399e63667022"
 		},
 		{
 			"ImportPath": "github.com/jteeuwen/go-pkg-rss",
-			"Rev": "2b6dc03edeb0bb531e0d85dd973e8ac0d7187884"
+			"Rev": "5576b8d83ed75cbb4bc43ef18c07414f880b3472"
 		},
 		{
 			"ImportPath": "github.com/jteeuwen/go-pkg-xmlx",
-			"Rev": "3623786eeb421657b11acad4aa1a9b89683c031f"
+			"Rev": "cf505b97c711dd1c5a4682f68ea04dd35e385b8f"
 		},
 		{
 			"ImportPath": "github.com/julienschmidt/httprouter",

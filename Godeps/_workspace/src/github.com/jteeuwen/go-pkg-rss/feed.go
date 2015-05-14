@@ -26,17 +26,47 @@
 package feeder
 
 import (
-	"errors"
 	"fmt"
-	xmlx "github.com/jteeuwen/go-pkg-xmlx"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	xmlx "github.com/jteeuwen/go-pkg-xmlx"
 )
 
-type ChannelHandler func(f *Feed, newchannels []*Channel)
-type ItemHandler func(f *Feed, ch *Channel, newitems []*Item)
+type UnsupportedFeedError struct {
+	Type    string
+	Version [2]int
+}
+
+func (err *UnsupportedFeedError) Error() string {
+	return fmt.Sprintf("Unsupported feed: %s, version: %+v", err.Type, err.Version)
+}
+
+type ChannelHandlerFunc func(f *Feed, newchannels []*Channel)
+
+func (h ChannelHandlerFunc) ProcessChannels(f *Feed, newchannels []*Channel) {
+	if h != nil {
+		h(f, newchannels)
+	}
+}
+
+type ItemHandlerFunc func(f *Feed, ch *Channel, newitems []*Item)
+
+func (h ItemHandlerFunc) ProcessItems(f *Feed, ch *Channel, newitems []*Item) {
+	if h != nil {
+		h(f, ch, newitems)
+	}
+}
+
+type ChannelHandler interface {
+	ProcessChannels(f *Feed, newchannels []*Channel)
+}
+
+type ItemHandler interface {
+	ProcessItems(f *Feed, ch *Channel, newitems []*Item)
+}
 
 type Feed struct {
 	// Custom cache timeout in minutes.
@@ -58,36 +88,58 @@ type Feed struct {
 	// Url from which this feed was created.
 	Url string
 
-	// Database containing a list of known Items and Channels for this instance
+	// Database
 	database *database
 
-	// A notification function, used to notify the host when a new channel
-	// has been found.
-	chanhandler ChannelHandler
+	// The channel handler
+	channelHandler ChannelHandler
 
-	// A notification function, used to notify the host when a new item
-	// has been found for a given channel.
-	itemhandler ItemHandler
+	// The item handler
+	itemHandler ItemHandler
 
 	// Last time content was fetched. Used in conjunction with CacheTimeout
 	// to ensure we don't get content too often.
-	lastupdate int64
+	lastupdate time.Time
+
+	// On our next fetch *ONLY* (this will get reset to false afterwards),
+	// ignore all cache settings and update frequency hints, and always fetch.
+	ignoreCacheOnce bool
 }
 
-func New(cachetimeout int, enforcecachelimit bool, ch ChannelHandler, ih ItemHandler) *Feed {
+// New is a helper function to stay semi-compatible with
+// the old code. Includes the database handler to ensure
+// that this approach is functionally identical to the
+// old database/handlers version.
+func New(cachetimeout int, enforcecachelimit bool, ch ChannelHandlerFunc, ih ItemHandlerFunc) *Feed {
+	db := NewDatabase()
+	f := NewWithHandlers(cachetimeout, enforcecachelimit, NewDatabaseChannelHandler(db, ch), NewDatabaseItemHandler(db, ih))
+	f.database = db
+	return f
+}
+
+// NewWithHandler creates a new feed with handlers.
+// People should use this approach from now on.
+func NewWithHandlers(cachetimeout int, enforcecachelimit bool, ch ChannelHandler, ih ItemHandler) *Feed {
 	v := new(Feed)
 	v.CacheTimeout = cachetimeout
 	v.EnforceCacheLimit = enforcecachelimit
 	v.Type = "none"
-	v.database = NewDatabase()
-	v.chanhandler = ch
-	v.itemhandler = ih
+	v.channelHandler = ch
+	v.itemHandler = ih
 	return v
 }
 
 // This returns a timestamp of the last time the feed was updated.
-// The value is in seconds.
-func (this *Feed) LastUpdate() int64 { return this.lastupdate }
+func (this *Feed) LastUpdate() time.Time {
+	return this.lastupdate
+}
+
+// Until the next *successful* fetching of the feed's content, the
+// fetcher will ignore all cache values and update interval hints,
+// and always attempt to retrieve a fresh copy of the feed.
+func (this *Feed) IgnoreCacheOnce() {
+	this.ignoreCacheOnce = true
+}
 
 // Fetch retrieves the feed's latest content if necessary.
 //
@@ -115,6 +167,7 @@ func (this *Feed) FetchClient(uri string, client *http.Client, charset xmlx.Char
 		return
 	}
 
+	this.lastupdate = time.Now().UTC()
 	this.Url = uri
 	doc := xmlx.New()
 
@@ -122,7 +175,12 @@ func (this *Feed) FetchClient(uri string, client *http.Client, charset xmlx.Char
 		return
 	}
 
-	return this.makeFeed(doc)
+	if err = this.makeFeed(doc); err == nil {
+		// Only if fetching and parsing succeeded.
+		this.ignoreCacheOnce = false
+	}
+
+	return
 }
 
 // Fetch retrieves the feed's content from the []byte
@@ -131,7 +189,6 @@ func (this *Feed) FetchClient(uri string, client *http.Client, charset xmlx.Char
 // This allows us to specify a custom character encoding conversion
 // routine when dealing with non-utf8 input. Supply 'nil' to use the
 // default from Go's xml package.
-
 func (this *Feed) FetchBytes(uri string, content []byte, charset xmlx.CharsetFunc) (err error) {
 	this.Url = uri
 
@@ -150,8 +207,7 @@ func (this *Feed) makeFeed(doc *xmlx.Document) (err error) {
 	this.Type, this.Version = this.GetVersionInfo(doc)
 
 	if ok := this.testVersions(); !ok {
-		err = errors.New(fmt.Sprintf("Unsupported feed: %s, version: %+v", this.Type, this.Version))
-		return
+		return &UnsupportedFeedError{Type: this.Type, Version: this.Version}
 	}
 
 	if err = this.buildFeed(doc); err != nil || len(this.Channels) == 0 {
@@ -169,25 +225,14 @@ func (this *Feed) makeFeed(doc *xmlx.Document) (err error) {
 }
 
 func (this *Feed) notifyListeners() {
-	var newchannels []*Channel
 	for _, channel := range this.Channels {
-		if this.database.request <- channel.Key(); !<-this.database.response {
-			newchannels = append(newchannels, channel)
-		}
-
-		var newitems []*Item
-		for _, item := range channel.Items {
-			if this.database.request <- item.Key(); !<-this.database.response {
-				newitems = append(newitems, item)
-			}
-		}
-		if len(newitems) > 0 && this.itemhandler != nil {
-			this.itemhandler(this, channel, newitems)
+		if len(channel.Items) > 0 && this.itemHandler != nil {
+			this.itemHandler.ProcessItems(this, channel, channel.Items)
 		}
 	}
 
-	if len(newchannels) > 0 && this.chanhandler != nil {
-		this.chanhandler(this, newchannels)
+	if len(this.Channels) > 0 && this.channelHandler != nil {
+		this.channelHandler.ProcessChannels(this, this.Channels)
 	}
 }
 
@@ -197,12 +242,20 @@ func (this *Feed) notifyListeners() {
 // true). If this function returns true, you can be sure that a fresh feed
 // update will be performed.
 func (this *Feed) CanUpdate() bool {
+	if this.ignoreCacheOnce {
+		// Even though ignoreCacheOnce is only good for one fetch, we only reset
+		// it after a successful fetch, so CanUpdate() has no side-effects, and
+		// can be called repeatedly before performing the actual fetch.
+		return true
+	}
+
 	// Make sure we are not within the specified cache-limit.
 	// This ensures we don't request data too often.
-	utc := time.Now().UTC()
-	if utc.UnixNano()-this.lastupdate < int64(this.CacheTimeout*60) {
+	if this.SecondsTillUpdate() > 0 {
 		return false
 	}
+
+	utc := time.Now().UTC()
 
 	// If skipDays or skipHours are set in the RSS feed, use these to see if
 	// we can update.
@@ -224,7 +277,6 @@ func (this *Feed) CanUpdate() bool {
 		}
 	}
 
-	this.lastupdate = utc.UnixNano()
 	return true
 }
 
@@ -232,7 +284,13 @@ func (this *Feed) CanUpdate() bool {
 // before the feed should update.
 func (this *Feed) SecondsTillUpdate() int64 {
 	utc := time.Now().UTC()
-	return int64(this.CacheTimeout*60) - (utc.Unix() - (this.lastupdate / 1e9))
+	elapsed := utc.Sub(this.lastupdate)
+	return int64(this.CacheTimeout*60) - int64(elapsed.Seconds())
+}
+
+// Returns the duration needed to elapse before the feed should update.
+func (this *Feed) TillUpdate() (time.Duration, error) {
+	return time.ParseDuration(fmt.Sprintf("%ds", this.SecondsTillUpdate()))
 }
 
 func (this *Feed) buildFeed(doc *xmlx.Document) (err error) {
@@ -264,24 +322,27 @@ func (this *Feed) testVersions() bool {
 	return true
 }
 
+// Returns the type of the feed, ie. "atom" or "rss", and the version number as an array.
+// The first item in the array is the major and the second the minor version number.
 func (this *Feed) GetVersionInfo(doc *xmlx.Document) (ftype string, fversion [2]int) {
 	var node *xmlx.Node
 
-	if node = doc.SelectNode("http://www.w3.org/2005/Atom", "feed"); node == nil {
-		goto rss
+	if node = doc.SelectNode("http://www.w3.org/2005/Atom", "feed"); node != nil {
+		ftype = "atom"
+		fversion = [2]int{1, 0}
+		return
 	}
 
-	ftype = "atom"
-	fversion = [2]int{1, 0}
-	return
-
-rss:
 	if node = doc.SelectNode("", "rss"); node != nil {
 		ftype = "rss"
+		major := 0
+		minor := 0
 		version := node.As("", "version")
 		p := strings.Index(version, ".")
-		major, _ := strconv.Atoi(version[0:p])
-		minor, _ := strconv.Atoi(version[p+1 : len(version)])
+		if p != -1 {
+			major, _ = strconv.Atoi(version[0:p])
+			minor, _ = strconv.Atoi(version[p+1 : len(version)])
+		}
 		fversion = [2]int{major, minor}
 		return
 	}

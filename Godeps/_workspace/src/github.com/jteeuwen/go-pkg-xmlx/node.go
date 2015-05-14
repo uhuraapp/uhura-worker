@@ -66,6 +66,15 @@ func (this *Node) GetValue() string {
 	return res
 }
 
+// SetValue sets the value of the node to the given parameter.
+// It deletes all children of the node so the old data does not get back at node.GetValue
+func (this *Node) SetValue(val string) {
+	t := NewNode(NT_TEXT)
+	t.Value = val
+	t.Parent = this
+	this.Children = []*Node{t} // brutally replace all other children
+}
+
 // Get node value as string
 func (this *Node) S(namespace, name string) string {
 	foundNode := rec_SelectNode(this, namespace, name)
@@ -388,6 +397,19 @@ func (this *Node) SelectNodes(namespace, name string) []*Node {
 	return list
 }
 
+// Select multiple nodes directly under this node, by name.
+func (this *Node) SelectNodesDirect(namespace, name string) []*Node {
+	list := make([]*Node, 0, 16)
+
+	for _, v := range this.Children {
+		if (namespace == "*" || v.Name.Space == namespace) && (name == "*" || v.Name.Local == name) {
+			list = append(list, v)
+		}
+	}
+
+	return list
+}
+
 // Select multiple nodes by name
 func (this *Node) SelectNodesRecursive(namespace, name string) []*Node {
 	list := make([]*Node, 0, 16)
@@ -396,13 +418,15 @@ func (this *Node) SelectNodesRecursive(namespace, name string) []*Node {
 }
 
 func rec_SelectNodes(cn *Node, namespace, name string, list *[]*Node, recurse bool) {
+	if (namespace == "*" || cn.Name.Space == namespace) && (name == "*" || cn.Name.Local == name) {
+		*list = append(*list, cn)
+		if !recurse {
+			return
+		}
+	}
+
 	for _, v := range cn.Children {
-		if (namespace == "*" || v.Name.Space == namespace) && (name == "*" || v.Name.Local == name) {
-			*list = append(*list, v)
-		}
-		if recurse {
-			rec_SelectNodes(v, namespace, name, list, recurse)
-		}
+		rec_SelectNodes(v, namespace, name, list, recurse)
 	}
 }
 

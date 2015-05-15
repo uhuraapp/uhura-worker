@@ -31,6 +31,7 @@ func (r *rollbarMidleware) Call(queue string, message *workers.Msg, next func() 
 			err, _ := r.(error)
 			rollbar.ErrorWithStackSkip(rollbar.ERR, err, 5, &rollbar.Field{Name: "message", Data: message.ToJson()})
 			rollbar.Wait()
+			panic(r)
 		}
 	}()
 	acknowledge = next()

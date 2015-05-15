@@ -29,7 +29,7 @@ func (r *rollbarMidleware) Call(queue string, message *workers.Msg, next func() 
 	defer func() {
 		if r := recover(); r != nil {
 			err, _ := r.(error)
-			rollbar.ErrorWithStackSkip(rollbar.ERR, err, 5)
+			rollbar.ErrorWithStackSkip(rollbar.ERR, err, 5, &rollbar.Field{Name: "message", Data: message.ToJson()})
 			rollbar.Wait()
 		}
 	}()
@@ -101,7 +101,7 @@ func sync(message *workers.Msg) {
 
 	channels.CreateLinks(R(channelFeed.Links), channel.Id, p)
 
-	// 	// [ ] episodes := FindOrCreateEpisodes(channel, xml)
+	// [ ] episodes := FindOrCreateEpisodes(channel, xml)
 
 	// 	// [x] GetDelayBetweenEpisodes(episodes)
 	// 	// [x] SetNewRun(channel)

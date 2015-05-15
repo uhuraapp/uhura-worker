@@ -15,6 +15,7 @@ import (
 
 	"github.com/jinzhu/gorm"
 	"github.com/jrallison/go-workers"
+	"github.com/stvp/rollbar"
 )
 
 const imageHost string = "http://arcane-forest-5063.herokuapp.com"
@@ -22,12 +23,29 @@ const weekHours time.Duration = 24 * 7
 
 var p gorm.DB
 
+type rollbarMidleware struct{}
+
+func (r *rollbarMidleware) Call(queue string, message *workers.Msg, next func() bool) (acknowledge bool) {
+	defer func() {
+		if r := recover(); r != nil {
+			err, _ := r.(error)
+			rollbar.ErrorWithStackSkip(rollbar.ERR, err, 5)
+			rollbar.Wait()
+		}
+	}()
+	acknowledge = next()
+	return
+}
+
 func main() {
 	redis, err := url.Parse(os.Getenv("REDIS_URL"))
 
 	if err != nil {
 		panic("REDIS_URL error, " + err.Error())
 	}
+
+	rollbar.Token = os.Getenv("ROLLBAR_KEY")
+	rollbar.Environment = os.Getenv("ROLLBAR_ENV")
 
 	password, _ := redis.User.Password()
 
@@ -38,6 +56,8 @@ func main() {
 		"pool":     "20",
 		"process":  "1",
 	})
+
+	workers.Middleware.Append(&rollbarMidleware{})
 
 	workers.Process("sync", sync, 18)
 	workers.Process("sync-low", sync, 2)

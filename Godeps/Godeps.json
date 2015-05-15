@@ -140,6 +140,11 @@
 			"Rev": "e5fb9bb8a3a168cc269b38f092b65d2e18cebb9a"
 		},
 		{
+			"ImportPath": "github.com/stvp/rollbar",
+			"Comment": "v0.3.1-4-g3f10961",
+			"Rev": "3f10961d0bdb493ad6a6ecec9fb16d97c33d593e"
+		},
+		{
 			"ImportPath": "golang.org/x/net/html",
 			"Rev": "84ba27dd5b2d8135e9da1395277f2c9333a2ffda"
 		}

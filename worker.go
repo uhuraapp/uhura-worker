@@ -10,6 +10,7 @@ import (
 
 	"bitbucket.org/dukex/uhura-api/channels"
 	"bitbucket.org/dukex/uhura-api/database"
+	"bitbucket.org/dukex/uhura-api/helpers"
 	"bitbucket.org/dukex/uhura-api/models"
 	"bitbucket.org/dukex/uhura-api/parser"
 
@@ -100,9 +101,10 @@ func sync(message *workers.Msg) {
 
 	p.Save(&channel)
 
-	channels.CreateLinks(R(channelFeed.Links), channel.Id, p)
+	channels.CreateLinks(r(channelFeed.Links), channel.Id, p)
 
-	// [ ] episodes := FindOrCreateEpisodes(channel, xml)
+	//  // [x] episodes := FindOrCreateEpisodes(channel, xml)
+	saveEpisodes(p, channelFeed.Episodes, channel)
 
 	// 	// [x] GetDelayBetweenEpisodes(episodes)
 	// 	// [x] SetNewRun(channel)
@@ -130,6 +132,53 @@ func cacheImage(model *models.Channel) {
 	if resp.StatusCode == 200 && strings.Contains(newImageURL, imageHost+"/cache") {
 		model.ImageUrl = newImageURL
 	}
+}
+
+func saveEpisodes(p gorm.DB, episodes []*parser.Episode, channel models.Channel) {
+	for _, episode := range episodes {
+		saveEpisode(p, episode, channel)
+	}
+}
+
+func saveEpisode(p gorm.DB, episodeFeed *parser.Episode, channel models.Channel) {
+	var episode models.Episode
+
+	description := episodeFeed.Summary
+	if episodeFeed.Summary == "" {
+		description = episodeFeed.Description
+	}
+
+	publishedAt, err := episodeFeed.Feed.ParsedPubDate()
+	if err != nil {
+		publishedAt, err = getPubDate(episodeFeed)
+		checkError(err)
+	}
+
+	audioData := &channels.EpisodeAudioData{
+		ContentLength: episodeFeed.Enclosures[0].Length,
+		ContentType:   episodeFeed.Enclosures[0].Type,
+	}
+
+	if audioData.ContentLength == 0 || audioData.ContentType == "" {
+		audioData, err = channels.GetEpisodeAudioData(episodeFeed.Source)
+		checkError(err)
+	}
+
+	err = p.Table(models.Episode{}.TableName()).
+		Where("key = ?", episodeFeed.GetKey()).
+		Assign(models.Episode{
+		Key:           episodeFeed.GetKey(),
+		Uri:           helpers.MakeUri(episodeFeed.Title),
+		Title:         episodeFeed.Title,
+		SourceUrl:     episodeFeed.Source,
+		Description:   description,
+		ChannelId:     channel.Id,
+		PublishedAt:   publishedAt,
+		ContentType:   audioData.ContentType,
+		ContentLength: audioData.ContentLength,
+	}).
+		FirstOrCreate(&episode).Error
+	checkError(err)
 }
 
 func scheduleNextRun(channelFeed *parser.Channel, id int64) {
@@ -171,13 +220,23 @@ func scheduleNextWeek(id int64) {
 	scheduleAt(at, id)
 }
 
+const episodePubDateFormat = "Mon, _2 Jan 2006 15:04:05 -0700"
+
+func getPubDate(e *parser.Episode) (time.Time, error) {
+	pubDate := strings.Replace(e.PubDate, "GMT", "-0100", -1)
+	pubDate = strings.Replace(pubDate, "PST", "-0800", -1)
+	pubDate = strings.Replace(pubDate, "PDT", "-0700", -1)
+
+	return time.Parse(episodePubDateFormat, pubDate)
+}
+
 func checkError(err error) {
 	if err != nil {
 		panic(err)
 	}
 }
 
-func R(s []string) []string {
+func r(s []string) []string {
 	m := map[string]bool{}
 	t := []string{}
 	for _, v := range s {

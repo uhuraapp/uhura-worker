@@ -17,8 +17,8 @@ func GetEpisodeAudioData(sourceURL string) (*EpisodeAudioData, error) {
 	}
 	defer response.Body.Close()
 
-	if response.StatusCode != http.StatusFound {
-		return nil, errors.New(sourceURL + " status " + response.Status)
+	if response.StatusCode != http.StatusOK {
+		return nil, errors.New(sourceURL + " status " + response.Status + "")
 	}
 
 	e := new(EpisodeAudioData)

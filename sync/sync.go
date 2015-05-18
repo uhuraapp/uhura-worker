@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
 
@@ -16,10 +17,13 @@ import (
 )
 
 const (
-	imageHost            string        = "http://arcane-forest-5063.herokuapp.com"
-	episodePubDateFormat string        = "Mon, _2 Jan 2006 15:04:05 -0700"
-	weekHours            time.Duration = 24 * 7
+	imageHost                              string        = "http://arcane-forest-5063.herokuapp.com"
+	episodePubDateFormat                   string        = "Mon, _2 Jan 2006 15:04:05 -0700"
+	episodePubDateFormatWithoutMiliseconds string        = "Mon, _2 Jan 2006 15:04 -0700"
+	weekHours                              time.Duration = 24 * 7
 )
+
+var dateWithoutMiliseconds = regexp.MustCompile(`^\w{3}.{13,14}\d{2}:\d{2}\s`)
 
 // Sync channel Class
 type Sync struct {
@@ -151,6 +155,10 @@ func (s Sync) fixPubDate(e *parser.Episode) (time.Time, error) {
 	pubDate := strings.Replace(e.PubDate, "GMT", "-0100", -1)
 	pubDate = strings.Replace(pubDate, "PST", "-0800", -1)
 	pubDate = strings.Replace(pubDate, "PDT", "-0700", -1)
+
+	if dateWithoutMiliseconds.MatchString(pubDate) {
+		return time.Parse(episodePubDateFormatWithoutMiliseconds, pubDate)
+	}
 
 	return time.Parse(episodePubDateFormat, pubDate)
 }

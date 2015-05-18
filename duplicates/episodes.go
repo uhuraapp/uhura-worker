@@ -2,6 +2,7 @@ package duplates
 
 import (
 	"sort"
+	"strings"
 
 	"github.com/jinzhu/gorm"
 
@@ -38,7 +39,7 @@ func Episodes(DB gorm.DB) []int64 {
 func organizeDuplicates(episodes []episode) map[string][]episode {
 	duplicateEpisodes := make(map[string][]episode)
 	for _, e := range episodes {
-		duplicateEpisodes[e.Title] = append(duplicateEpisodes[e.Title], e)
+		duplicateEpisodes[strings.ToLower(e.Title)] = append(duplicateEpisodes[e.Title], e)
 	}
 	return duplicateEpisodes
 }

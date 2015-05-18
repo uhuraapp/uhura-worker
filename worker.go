@@ -4,7 +4,6 @@ import (
 	"net/url"
 	"os"
 	"strconv"
-	"time"
 
 	"bitbucket.org/dukex/uhura-api/database"
 	"bitbucket.org/dukex/uhura-api/models"
@@ -53,9 +52,8 @@ func main() {
 
 	var c []int64
 	p.Table(models.Channel{}.TableName()).Pluck("id", &c)
-	for i, id := range c {
-		minutes := time.Duration(i) * time.Minute
-		workers.EnqueueAt("sync-low", "sync", time.Now().Add(minutes), id)
+	for _, id := range c {
+		workers.Enqueue("sync-low", "sync", id)
 	}
 
 	workers.Run()

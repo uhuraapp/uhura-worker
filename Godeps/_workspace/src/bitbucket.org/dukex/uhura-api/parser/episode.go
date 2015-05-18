@@ -43,6 +43,11 @@ func (e *Episode) Build() bool {
 	if e.Feed.Guid != nil {
 		e.ID = *e.Feed.Guid
 	}
+
+	if e.Source == "" {
+		return false
+	}
+
 	return true
 }
 

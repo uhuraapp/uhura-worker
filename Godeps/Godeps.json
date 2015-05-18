@@ -4,27 +4,27 @@
 	"Deps": [
 		{
 			"ImportPath": "bitbucket.org/dukex/uhura-api/channels",
-			"Rev": "4d30222212f0abb280986353282a719f2433e0e5"
+			"Rev": "e1f26fdd3260d1beae76a0facd84ab6fa7e3823e"
 		},
 		{
 			"ImportPath": "bitbucket.org/dukex/uhura-api/database",
-			"Rev": "4d30222212f0abb280986353282a719f2433e0e5"
+			"Rev": "e1f26fdd3260d1beae76a0facd84ab6fa7e3823e"
 		},
 		{
 			"ImportPath": "bitbucket.org/dukex/uhura-api/entities",
-			"Rev": "4d30222212f0abb280986353282a719f2433e0e5"
+			"Rev": "e1f26fdd3260d1beae76a0facd84ab6fa7e3823e"
 		},
 		{
 			"ImportPath": "bitbucket.org/dukex/uhura-api/helpers",
-			"Rev": "4d30222212f0abb280986353282a719f2433e0e5"
+			"Rev": "e1f26fdd3260d1beae76a0facd84ab6fa7e3823e"
 		},
 		{
 			"ImportPath": "bitbucket.org/dukex/uhura-api/models",
-			"Rev": "4d30222212f0abb280986353282a719f2433e0e5"
+			"Rev": "e1f26fdd3260d1beae76a0facd84ab6fa7e3823e"
 		},
 		{
 			"ImportPath": "bitbucket.org/dukex/uhura-api/parser",
-			"Rev": "4d30222212f0abb280986353282a719f2433e0e5"
+			"Rev": "e1f26fdd3260d1beae76a0facd84ab6fa7e3823e"
 		},
 		{
 			"ImportPath": "code.google.com/p/go-charset/charset",

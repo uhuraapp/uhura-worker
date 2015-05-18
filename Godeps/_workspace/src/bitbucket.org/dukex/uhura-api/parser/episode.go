@@ -4,6 +4,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"io"
+	"strings"
 
 	rss "github.com/jteeuwen/go-pkg-rss"
 )
@@ -37,7 +38,7 @@ func (e *Episode) Build() bool {
 	e.Subtitle = e.value(e, "subtitle")
 	e.Summary = e.value(e, "summary")
 	e.Duration = e.value(e, "duration")
-	e.Source = e.Enclosures[0].Url
+	e.Source = strings.TrimSpace(e.Enclosures[0].Url)
 
 	if e.Feed.Guid != nil {
 		e.ID = *e.Feed.Guid

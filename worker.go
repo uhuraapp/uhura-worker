@@ -50,11 +50,13 @@ func main() {
 
 	p = database.NewPostgresql()
 
-	var c []int64
-	p.Table(models.Channel{}.TableName()).Pluck("id", &c)
-	for _, id := range c {
-		workers.Enqueue("sync-low", "sync", id)
-	}
+	go func() {
+		var c []int64
+		p.Table(models.Channel{}.TableName()).Pluck("id", &c)
+		for _, id := range c {
+			workers.Enqueue("sync-low", "sync", id)
+		}
+	}()
 
 	workers.Run()
 }

@@ -18,7 +18,11 @@ func (c iTunes) value(f iTunesExtensiable, k string) string {
 }
 
 func (c iTunes) attr(f iTunesExtensiable, k, attr string) string {
-	return c.attrs(f, k, attr)[0]
+	attrs := c.attrs(f, k, attr)
+	if len(attrs) > 0 {
+		return attrs[0]
+	}
+	return ""
 }
 
 func (c iTunes) attrs(f iTunesExtensiable, k, attr string) []string {

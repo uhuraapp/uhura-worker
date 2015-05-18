@@ -8,22 +8,23 @@ import (
 	rss "github.com/jteeuwen/go-pkg-rss"
 )
 
+// Channel parsed
 type Channel struct {
-	Id            string     `json:"id"`
-	Title         string     `json:"title"`
-	Subtitle      string     `json:"subtitle"`
-	Description   string     `json:"description"`
-	Summary       string     `json:"summary"`
-	Language      string     `json:"language"`
-	Copyright     string     `json:"copyright"`
-	PubDate       string     `json:"pub_date"`
-	Category      string     `json:"category"`
-	Author        string     `json:"author"`
-	Image         string     `json:"image_url"`
-	Links         []string   `json:"links"`
-	Episodes      []*Episode `json:"episodes"`
-	UhuraId       string     `json:"uhura_id"`
-	LastBuildDate string     `json:"last_build_date"`
+	ID            string      `json:"id"`
+	Title         string      `json:"title"`
+	Subtitle      string      `json:"subtitle"`
+	Description   string      `json:"description"`
+	Summary       string      `json:"summary"`
+	Language      string      `json:"language"`
+	Copyright     string      `json:"copyright"`
+	PubDate       string      `json:"pub_date"`
+	Categories    []*Category `json:"categories"`
+	Author        string      `json:"author"`
+	Image         string      `json:"image_url"`
+	Links         []string    `json:"links"`
+	Episodes      []*Episode  `json:"episodes"`
+	UhuraID       string      `json:"uhura_id"`
+	LastBuildDate string      `json:"last_build_date"`
 
 	requestedURL string
 	URL          string
@@ -32,14 +33,17 @@ type Channel struct {
 	iTunes
 }
 
+// HasNewURL check if channel has a new URL
 func (c *Channel) HasNewURL() bool {
 	return c.NewURL() != ""
 }
 
+// NewURL get feed new URL
 func (c *Channel) NewURL() string {
 	return c.value(c, "new-feed-url")
 }
 
+// Build channel from parsed rss
 func (c *Channel) Build() {
 	c.Title = c.Feed.Title
 	c.Description = c.Feed.Description
@@ -49,24 +53,32 @@ func (c *Channel) Build() {
 	c.Subtitle = c.value(c, "subtitle")
 	c.Summary = c.value(c, "summary")
 	c.Author = c.value(c, "author")
-	c.Category = c.attr(c, "category", "text")
 	c.Image = c.FixImage()
 	c.Links = c.GetLinks()
-	c.Id = c.GenerateID()
-	c.LastBuildDate = c.LastBuildDate
+	c.ID = c.GenerateID()
+	c.LastBuildDate = c.Feed.LastBuildDate
+
+	categories := c.attrs(c, "category", "text")
+	for _, category := range categories {
+		c.Categories = append(c.Categories, &Category{
+			Name: category,
+		})
+	}
 
 	log.Debug("%s", c.Feed.Links)
 	log.Debug("channel build finished: %s", c.Title)
 }
 
+// FixImage get correct image
 func (c *Channel) FixImage() string {
 	if image := c.attr(c, "image", "href"); image != "" {
 		return image
-	} else {
-		return c.Feed.Image.Url
 	}
+
+	return c.Feed.Image.Url
 }
 
+// GetExtensions from rss
 func (c *Channel) GetExtensions(ext string) map[string][]rss.Extension {
 	if c.Feed != nil && len(c.Feed.Extensions) > 0 {
 		return c.Feed.Extensions[ext]
@@ -74,6 +86,7 @@ func (c *Channel) GetExtensions(ext string) map[string][]rss.Extension {
 	return nil
 }
 
+// GetLinks from urls requested and feed data
 func (c *Channel) GetLinks() []string {
 	links := make([]string, 0)
 	links = helpers.AppendIfMissing(links, c.requestedURL)
@@ -86,6 +99,7 @@ func (c *Channel) GetLinks() []string {
 	return links
 }
 
+// GenerateID md5 from title
 func (c *Channel) GenerateID() string {
 	h := md5.New()
 	h.Write([]byte(c.Title))

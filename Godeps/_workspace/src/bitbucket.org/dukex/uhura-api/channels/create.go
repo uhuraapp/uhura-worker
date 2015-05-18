@@ -30,9 +30,9 @@ func Create(database gorm.DB, url string) (*entities.Channel, bool) {
 	log.Debug("no error found")
 	channelF := channels[0] // TODO: fix it
 
-	log.Debug("channel UhuraID: %s", channelF.UhuraId)
-	if channelF.UhuraId != "" {
-		ok = database.Table(models.Channel{}.TableName()).Where("uri = ?", channelF.UhuraId).
+	log.Debug("channel UhuraID: %s", channelF.UhuraID)
+	if channelF.UhuraID != "" {
+		ok = database.Table(models.Channel{}.TableName()).Where("uri = ?", channelF.UhuraID).
 			First(&channel).Error != gorm.RecordNotFound
 	} else {
 		model := translateChannel(channelF)

@@ -18,10 +18,15 @@ func (c iTunes) value(f iTunesExtensiable, k string) string {
 }
 
 func (c iTunes) attr(f iTunesExtensiable, k, attr string) string {
+	return c.attrs(f, k, attr)[0]
+}
+
+func (c iTunes) attrs(f iTunesExtensiable, k, attr string) []string {
+	items := make([]string, 0)
 	if i := c.get(f, k); len(i) > 0 {
-		return i[0].Attrs[attr]
+		items = append(items, i[0].Attrs[attr])
 	}
-	return ""
+	return items
 }
 
 func (c iTunes) get(f iTunesExtensiable, k string) []rss.Extension {

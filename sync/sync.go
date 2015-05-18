@@ -1,6 +1,7 @@
 package sync
 
 import (
+	"errors"
 	"net/http"
 	"net/url"
 	"strings"
@@ -56,9 +57,13 @@ func (s *Sync) defineFeed() {
 	channelURL, err := url.Parse(s.model.Url)
 	checkError(err)
 
-	channelsFeed, errors := parser.URL(channelURL)
-	if len(errors) > 0 {
-		panic(errors[0])
+	channelsFeed, _errors := parser.URL(channelURL)
+	if len(_errors) > 0 {
+		panic(_errors[0])
+	}
+
+	if len(channelsFeed) == 0 {
+		panic(errors.New("no channels - " + channelURL.String()))
 	}
 
 	s.feed = channelsFeed[0]

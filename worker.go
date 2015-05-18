@@ -1,43 +1,22 @@
 package main
 
 import (
-	"net/http"
 	"net/url"
 	"os"
 	"strconv"
-	"strings"
 	"time"
 
-	"bitbucket.org/dukex/uhura-api/channels"
 	"bitbucket.org/dukex/uhura-api/database"
-	"bitbucket.org/dukex/uhura-api/helpers"
 	"bitbucket.org/dukex/uhura-api/models"
-	"bitbucket.org/dukex/uhura-api/parser"
+	duplicates "bitbucket.org/dukex/uhura-worker/duplicates"
+	syncRunner "bitbucket.org/dukex/uhura-worker/sync"
 
 	"github.com/jinzhu/gorm"
 	"github.com/jrallison/go-workers"
 	"github.com/stvp/rollbar"
 )
 
-const imageHost string = "http://arcane-forest-5063.herokuapp.com"
-const weekHours time.Duration = 24 * 7
-
 var p gorm.DB
-
-type rollbarMidleware struct{}
-
-func (r *rollbarMidleware) Call(queue string, message *workers.Msg, next func() bool) (acknowledge bool) {
-	defer func() {
-		if r := recover(); r != nil {
-			err, _ := r.(error)
-			rollbar.ErrorWithStackSkip(rollbar.ERR, err, 5, &rollbar.Field{Name: "message", Data: message.ToJson()})
-			rollbar.Wait()
-			panic(r)
-		}
-	}()
-	acknowledge = next()
-	return
-}
 
 func main() {
 	redis, err := url.Parse(os.Getenv("REDIS_URL"))
@@ -59,191 +38,105 @@ func main() {
 		"process":  "1",
 	})
 
-	workers.Middleware.Append(&rollbarMidleware{})
-
-	workers.Process("sync", sync, 18)
-	workers.Process("sync-low", sync, 2)
+	// heroku support 20 connections
+	workers.Process("sync", sync, 10)
+	workers.Process("sync-low", syncLow, 5)
+	workers.Process("duplicate-episodes", duplicateEpisodes, 1)
+	workers.Process("orphan-channels", orphanChannel, 1)
+	workers.Process("delete-episode", deleteEpisode, 2)
 
 	port, _ := strconv.Atoi(os.Getenv("PORT"))
 
 	go workers.StatsServer(port)
 
 	p = database.NewPostgresql()
+
+	var c []int64
+	p.Table(models.Channel{}.TableName()).Pluck("id", &c)
+	for i, id := range c {
+		minutes := time.Duration(i) * time.Minute
+		workers.EnqueueAt("sync-low", "sync", time.Now().Add(minutes), id)
+	}
+
 	workers.Run()
 }
 
-func sync(message *workers.Msg) {
-	var channel models.Channel
+func reporter(message *workers.Msg) {
+	if r := recover(); r != nil {
+		err, _ := r.(error)
+		rollbar.ErrorWithStackSkip(rollbar.ERR, err, 5, &rollbar.Field{Name: "message", Data: message.ToJson()})
+		rollbar.Wait()
+		panic(r)
+	}
+}
+
+func syncLow(message *workers.Msg) {
+	defer reporter(message)
 
 	id, err := message.Args().Int64()
 	checkError(err)
 
-	// 	// [x] channel := FindChannel(xml)
-	err = p.Table(models.Channel{}.TableName()).First(&channel, id).Error
+	s := syncRunner.NewSync(id)
+	s.Sync(p)
+}
+
+func sync(message *workers.Msg) {
+	defer reporter(message)
+
+	id, err := message.Args().Int64()
 	checkError(err)
 
-	channelURL, err := url.Parse(channel.Url)
+	s := syncRunner.NewSync(id)
+	s.Sync(p)
+
+	nextRunAt, err := s.GetNextRun()
 	checkError(err)
 
-	// 	// [x] xml := ParserXML(body)
-	channelsFeed, errors := parser.URL(channelURL)
-	if len(errors) > 0 {
-		panic(errors[0])
-	}
-
-	channelFeed := channelsFeed[0]
-
-	//  // [x] UpdateChannel(channel, xml)
-	updateChannel(&channel, channelFeed)
-
-	// 	// [x] CacheImage(channel)
-	cacheImage(&channel)
-
-	p.Save(&channel)
-
-	channels.CreateLinks(r(channelFeed.Links), channel.Id, p)
-
-	//  // [x] episodes := FindOrCreateEpisodes(channel, xml)
-	saveEpisodes(p, channelFeed.Episodes, channel)
-
-	// 	// [x] GetDelayBetweenEpisodes(episodes)
-	// 	// [x] SetNewRun(channel)
-	scheduleNextRun(channelFeed, id)
+	workers.EnqueueAt("sync", "sync", nextRunAt, id)
+	workers.Enqueue("duplicate-episodes", "duplicateEpisodes", nil)
+	workers.Enqueue("orphan-channel", "orphanChannel", nil)
 }
 
-func updateChannel(model *models.Channel, feed *parser.Channel) *models.Channel {
-	return channels.TranslateFromFeed(model, feed)
-}
+func duplicateEpisodes(message *workers.Msg) {
+	defer reporter(message)
 
-func cacheImage(model *models.Channel) {
-	currentImageURL := model.ImageUrl
-	if strings.Contains(currentImageURL, imageHost) {
-		// Check image is OK
-		return
-	}
-
-	resp, err := http.Get(imageHost + "/resolve?url=" + currentImageURL)
-	if err != nil {
-		return
-	}
-
-	newImageURL := resp.Request.URL.String()
-
-	if resp.StatusCode == 200 && strings.Contains(newImageURL, imageHost+"/cache") {
-		model.ImageUrl = newImageURL
+	episodes := duplicates.Episodes(p)
+	for _, id := range episodes {
+		workers.Enqueue("delete-episode", "deleteEpisode", id)
 	}
 }
 
-func saveEpisodes(p gorm.DB, episodes []*parser.Episode, channel models.Channel) {
-	for _, episode := range episodes {
-		saveEpisode(p, episode, channel)
-	}
-}
+func deleteEpisode(message *workers.Msg) {
+	defer reporter(message)
 
-func saveEpisode(p gorm.DB, episodeFeed *parser.Episode, channel models.Channel) {
-	var episode models.Episode
-
-	description := episodeFeed.Summary
-	if episodeFeed.Summary == "" {
-		description = episodeFeed.Description
-	}
-
-	publishedAt, err := episodeFeed.Feed.ParsedPubDate()
-	if err != nil {
-		publishedAt, err = getPubDate(episodeFeed)
-		checkError(err)
-	}
-
-	audioData := &channels.EpisodeAudioData{
-		ContentLength: episodeFeed.Enclosures[0].Length,
-		ContentType:   episodeFeed.Enclosures[0].Type,
-	}
-
-	if audioData.ContentLength == 0 || audioData.ContentType == "" {
-		audioData, err = channels.GetEpisodeAudioData(episodeFeed.Source)
-		checkError(err)
-	}
-
-	err = p.Table(models.Episode{}.TableName()).
-		Where("key = ?", episodeFeed.GetKey()).
-		Assign(models.Episode{
-		Key:           episodeFeed.GetKey(),
-		Uri:           helpers.MakeUri(episodeFeed.Title),
-		Title:         episodeFeed.Title,
-		SourceUrl:     episodeFeed.Source,
-		Description:   description,
-		ChannelId:     channel.Id,
-		PublishedAt:   publishedAt,
-		ContentType:   audioData.ContentType,
-		ContentLength: audioData.ContentLength,
-	}).
-		FirstOrCreate(&episode).Error
+	id, err := message.Args().Int64()
 	checkError(err)
+
+	p.Table(models.Episode{}.TableName()).Where("id = ?", id).Delete(models.Episode{})
 }
 
-func scheduleNextRun(channelFeed *parser.Channel, id int64) {
-	if len(channelFeed.Episodes) > 1 {
-		t0, errT1 := channelFeed.Episodes[0].Feed.ParsedPubDate()
-		if errT1 != nil {
-			scheduleNextWeek(id)
-			return
+func orphanChannel(message *workers.Msg) {
+	defer reporter(message)
+
+	var channels []models.Channel
+	p.Table(models.Channel{}.TableName()).Find(&channels)
+
+	for _, channel := range channels {
+		var users []models.Subscription
+		p.Table(models.Subscription{}.TableName()).Where("channel_id = ?", channel.Id).Find(&users)
+		if len(users) < 1 {
+			var episodes []models.Episode
+			p.Table(models.Episode{}.TableName()).Where("channel_id = ?", channel.Id).Find(&episodes)
+			for _, e := range episodes {
+				workers.Enqueue("delete-episode", "deleteEpisode", e.Id)
+			}
+			p.Table(models.Channel{}.TableName()).Where("id = ?", channel.Id).Delete(models.Channel{})
 		}
-
-		t1, errT2 := channelFeed.Episodes[1].Feed.ParsedPubDate()
-		if errT2 != nil {
-			scheduleNextWeek(id)
-			return
-		}
-
-		nextRunAt := t0.Add(t0.Sub(t1))
-
-		now := time.Now()
-		if !nextRunAt.After(now) {
-			scheduleNextWeek(id)
-			return
-		}
-
-		scheduleAt(nextRunAt, id)
-	} else {
-		scheduleNextWeek(id)
-		return
 	}
-}
-
-func scheduleAt(at time.Time, id int64) {
-	workers.EnqueueAt("sync", "sync", at, id)
-}
-
-func scheduleNextWeek(id int64) {
-	now := time.Now()
-	at := now.Add(time.Hour * weekHours)
-	scheduleAt(at, id)
-}
-
-const episodePubDateFormat = "Mon, _2 Jan 2006 15:04:05 -0700"
-
-func getPubDate(e *parser.Episode) (time.Time, error) {
-	pubDate := strings.Replace(e.PubDate, "GMT", "-0100", -1)
-	pubDate = strings.Replace(pubDate, "PST", "-0800", -1)
-	pubDate = strings.Replace(pubDate, "PDT", "-0700", -1)
-
-	return time.Parse(episodePubDateFormat, pubDate)
 }
 
 func checkError(err error) {
 	if err != nil {
 		panic(err)
 	}
-}
-
-func r(s []string) []string {
-	m := map[string]bool{}
-	t := []string{}
-	for _, v := range s {
-		if _, seen := m[v]; !seen {
-			t = append(t, v)
-			m[v] = true
-		}
-	}
-	return t
 }

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/jinzhu/gorm"
+	"github.com/stvp/rollbar"
 
 	"bitbucket.org/dukex/uhura-api/channels"
 	"bitbucket.org/dukex/uhura-api/helpers"
@@ -46,7 +47,10 @@ func (s *Sync) Sync(p gorm.DB) {
 	s.update()
 	s.cacheImage()
 	s.save(p)
-	s.episodes(p)
+	hasNewEpisodes := s.episodes(p)
+	if hasNewEpisodes {
+		s.touchChannel(p)
+	}
 	s.createCategory(p)
 }
 
@@ -101,22 +105,40 @@ func (s *Sync) save(p gorm.DB) {
 	channels.CreateLinks(r(s.feed.Links), s.model.Id, p)
 }
 
-func (s *Sync) episodes(p gorm.DB) {
+func (s *Sync) episodes(p gorm.DB) bool {
+	hasNewEpisodes := false
+
 	for _, data := range s.feed.Episodes {
-		s.saveEpisode(p, s.buildEpisode(data))
+		episode, err := s.buildEpisode(data)
+		if err == nil {
+			if s.saveEpisode(p, episode) {
+				hasNewEpisodes = true
+			}
+		} else {
+			rollbar.Message("warning", err.Error())
+		}
 	}
+
+	return hasNewEpisodes
 }
 
-func (s *Sync) saveEpisode(p gorm.DB, episode models.Episode) {
+func (s *Sync) touchChannel(p gorm.DB) {
+	s.model.UpdatedAt = time.Now()
+	p.Save(s.model)
+}
+
+func (s *Sync) saveEpisode(p gorm.DB, episode models.Episode) bool {
 	err := p.Table(models.Episode{}.TableName()).
 		Where("key = ?", episode.Key).
 		Assign(episode).
 		FirstOrCreate(&episode).Error
 
 	checkError(err)
+
+	return p.NewRecord(episode)
 }
 
-func (s Sync) buildEpisode(data *parser.Episode) models.Episode {
+func (s Sync) buildEpisode(data *parser.Episode) (models.Episode, error) {
 	description := data.Summary
 	if description == "" {
 		description = data.Description
@@ -135,7 +157,7 @@ func (s Sync) buildEpisode(data *parser.Episode) models.Episode {
 
 	if audioData.ContentLength == 0 || audioData.ContentType == "" {
 		audioData, err = channels.GetEpisodeAudioData(data.Source)
-		checkError(err)
+		return models.Episode{}, err
 	}
 
 	return models.Episode{
@@ -148,7 +170,7 @@ func (s Sync) buildEpisode(data *parser.Episode) models.Episode {
 		PublishedAt:   publishedAt,
 		ContentType:   audioData.ContentType,
 		ContentLength: audioData.ContentLength,
-	}
+	}, nil
 }
 
 func (s Sync) fixPubDate(e *parser.Episode) (time.Time, error) {

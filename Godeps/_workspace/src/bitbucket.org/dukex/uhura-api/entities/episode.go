@@ -17,7 +17,7 @@ type Episode struct {
 	ChannelUri  string    `json:"channel_id"`
 	SourceUrl   string    `json:"source_url"`
 	PublishedAt time.Time `json:"published_at"`
-	StoppedAt   *int64     `json:"stopped_at"`
+	StoppedAt   *int64    `json:"stopped_at"`
 	// Uri         string `json:"uri"`
 	// Duration    string `json:"duration"`
 	// Type        string `json:"type"`
@@ -52,6 +52,10 @@ func SetListenAttributesToEpisode(DB gorm.DB, userId int, episodes []*Episode, c
 		if mapListened[episode.Id] != nil {
 			episode.Listened = mapListened[episode.Id].Viewed
 			episode.StoppedAt = &mapListened[episode.Id].StoppedAt
+			if episode.Listened {
+				z := int64(0)
+				episode.StoppedAt = &z
+			}
 		}
 	}
 }

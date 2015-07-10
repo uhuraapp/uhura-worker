@@ -12,4 +12,5 @@ type Channel struct {
 	Copyright   string    `json:"copyright"`
 	Episodes    []int64   `json:"episodes" sql:"-"`
 	UpdatedAt   time.Time `json:"updated_at"`
+	Enabled     bool      `json:"enabled"`
 }

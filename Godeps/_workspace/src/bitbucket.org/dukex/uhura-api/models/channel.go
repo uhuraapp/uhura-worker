@@ -23,6 +23,7 @@ type Channel struct {
 	Link          string
 	Loading       bool
 	Colors        string
+	Enabled       bool
 
 	URLS []ChannelURL
 

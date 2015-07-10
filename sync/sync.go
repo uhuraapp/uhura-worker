@@ -146,10 +146,16 @@ func (s Sync) buildEpisode(data *parser.Episode) (models.Episode, error) {
 		description = data.Description
 	}
 
-	publishedAt, err := data.Feed.ParsedPubDate()
-	if err != nil {
-		publishedAt, err = s.fixPubDate(data)
-		checkError(err)
+	var err error
+
+	// hack to feed without date
+	var publishedAt time.Time
+	if data.Feed.PubDate != "" {
+		publishedAt, err = data.Feed.ParsedPubDate()
+		if err != nil {
+			publishedAt, err = s.fixPubDate(data)
+			checkError(err)
+		}
 	}
 
 	audioData := &channels.EpisodeAudioData{

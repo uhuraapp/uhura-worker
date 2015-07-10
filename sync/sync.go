@@ -177,6 +177,7 @@ func (s Sync) fixPubDate(e *parser.Episode) (time.Time, error) {
 	pubDate := strings.Replace(e.PubDate, "GMT", "-0100", -1)
 	pubDate = strings.Replace(pubDate, "PST", "-0800", -1)
 	pubDate = strings.Replace(pubDate, "PDT", "-0700", -1)
+	pubDate = strings.Replace(pubDate, "EDT", "-0400", -1)
 
 	if dateWithoutMiliseconds.MatchString(pubDate) {
 		return time.Parse(episodePubDateFormatWithoutMiliseconds, pubDate)

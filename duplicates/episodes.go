@@ -47,6 +47,7 @@ func organizeDuplicates(episodes []episode) map[string][]episode {
 func lastAndOthersEpisodes(episodes []episode) (episode, []episode) {
 	sort.Sort(episodeByID(episodes))
 	newEpisodes := episodes[:len(episodes)-1]
+	// check source
 	return episodes[len(episodes)-1], newEpisodes
 }
 

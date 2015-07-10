@@ -43,15 +43,17 @@ func NewSync(channelID int64) Sync {
 // Sync syncronization
 func (s *Sync) Sync(p gorm.DB) {
 	s.defineModel(p)
-	s.defineFeed()
-	s.update()
-	s.cacheImage()
-	s.save(p)
-	hasNewEpisodes := s.episodes(p)
-	if hasNewEpisodes {
-		s.touchChannel(p)
+	if s.model.Enabled {
+		s.defineFeed()
+		s.update()
+		s.cacheImage()
+		s.save(p)
+		hasNewEpisodes := s.episodes(p)
+		if hasNewEpisodes {
+			s.touchChannel(p)
+		}
+		s.createCategory(p)
 	}
-	s.createCategory(p)
 }
 
 func (s *Sync) defineModel(p gorm.DB) {

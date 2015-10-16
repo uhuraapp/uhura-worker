@@ -11,7 +11,11 @@ type EpisodeAudioData struct {
 }
 
 func GetEpisodeAudioData(sourceURL string) (*EpisodeAudioData, error) {
-	response, err := http.Get(sourceURL)
+	client := &http.Client{}
+	request, err := http.NewRequest("GET", sourceURL, nil)
+	request.Close = true
+	response, err := client.Do(request)
+
 	if err != nil {
 		return nil, err
 	}

@@ -60,6 +60,7 @@ func Migrations(database gorm.DB) {
 
 	database.Model(&models.User{}).AddIndex("idx_user_by_token", "api_token")
 	database.Model(&models.User{}).AddIndex("idx_user_by_email", "email")
+	database.Model(&models.User{}).AddUniqueIndex("idx_user_email", "email")
 
 	database.Model(&models.ChannelURL{}).AddUniqueIndex("idx_channel_url_url", "url")
 }

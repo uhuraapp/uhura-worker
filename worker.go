@@ -52,7 +52,6 @@ func main() {
 
 	go func() {
 		workers.Enqueue("orphan-channels", "orphanChannel", nil)
-		workers.Enqueue("delete-episode", "deleteEpisode", nil)
 
 		var c []int64
 		p.Table(models.Channel{}.TableName()).Pluck("id", &c)

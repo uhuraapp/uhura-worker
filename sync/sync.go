@@ -175,8 +175,8 @@ func (s Sync) buildEpisode(data *parser.Episode) (models.Episode, error) {
 	}
 
 	if audioData.ContentLength == 0 || audioData.ContentType == "" {
-		audioData, err = channels.GetEpisodeAudioData(data.Source)
-		return models.Episode{}, err
+		// audioData, err = channels.GetEpisodeAudioData(data.Source)
+		// return models.Episode{}, err
 	}
 
 	return models.Episode{

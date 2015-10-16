@@ -130,14 +130,25 @@ func (s *Sync) touchChannel(p gorm.DB) {
 }
 
 func (s *Sync) saveEpisode(p gorm.DB, episode models.Episode) bool {
+	var tEpisode models.Episode
 	err := p.Table(models.Episode{}.TableName()).
-		Where("key = ?", episode.Key).
-		Assign(episode).
-		FirstOrCreate(&episode).Error
+		Where("source_url = ?", episode.SourceUrl).First(&tEpisode).Error
 
-	checkError(err)
+	if err == gorm.RecordNotFound {
+		err = p.Table(models.Episode{}.TableName()).
+			Where("key = ?", episode.Key).
+			Assign(episode).
+			FirstOrCreate(&episode).Error
 
-	return p.NewRecord(episode)
+		checkError(err)
+
+		return p.NewRecord(episode)
+	} else {
+		if err != nil {
+			rollbar.Message("warning", err.Error())
+		}
+		return false
+	}
 }
 
 func (s Sync) buildEpisode(data *parser.Episode) (models.Episode, error) {

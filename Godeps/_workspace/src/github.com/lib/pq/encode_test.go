@@ -2,6 +2,7 @@ package pq
 
 import (
 	"bytes"
+	"database/sql"
 	"fmt"
 	"testing"
 	"time"
@@ -400,7 +401,7 @@ func TestStringWithNul(t *testing.T) {
 	}
 }
 
-func TestByteaToText(t *testing.T) {
+func TestByteSliceToText(t *testing.T) {
 	db := openTestConn(t)
 	defer db.Close()
 
@@ -418,7 +419,7 @@ func TestByteaToText(t *testing.T) {
 	}
 }
 
-func TestTextToBytea(t *testing.T) {
+func TestStringToBytea(t *testing.T) {
 	db := openTestConn(t)
 	defer db.Close()
 
@@ -433,6 +434,136 @@ func TestTextToBytea(t *testing.T) {
 
 	if !bytes.Equal(result, []byte(b)) {
 		t.Fatalf("expected %v but got %v", b, result)
+	}
+}
+
+func TestTextByteSliceToUUID(t *testing.T) {
+	db := openTestConn(t)
+	defer db.Close()
+
+	b := []byte("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11")
+	row := db.QueryRow("SELECT $1::uuid", b)
+
+	var result string
+	err := row.Scan(&result)
+	if forceBinaryParameters() {
+		pqErr := err.(*Error)
+		if pqErr == nil {
+			t.Errorf("Expected to get error")
+		} else if pqErr.Code != "22P03" {
+			t.Fatalf("Expected to get invalid binary encoding error (22P03), got %s", pqErr.Code)
+		}
+	} else {
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if result != string(b) {
+			t.Fatalf("expected %v but got %v", b, result)
+		}
+	}
+}
+
+func TestBinaryByteSlicetoUUID(t *testing.T) {
+	db := openTestConn(t)
+	defer db.Close()
+
+	b := []byte{'\xa0','\xee','\xbc','\x99',
+				'\x9c', '\x0b',
+				'\x4e', '\xf8',
+				'\xbb', '\x00', '\x6b',
+				'\xb9', '\xbd', '\x38', '\x0a', '\x11'}
+	row := db.QueryRow("SELECT $1::uuid", b)
+
+	var result string
+	err := row.Scan(&result)
+	if forceBinaryParameters() {
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if result != string("a0eebc99-9c0b-4ef8-bb00-6bb9bd380a11") {
+			t.Fatalf("expected %v but got %v", b, result)
+		}
+	} else {
+		pqErr := err.(*Error)
+		if pqErr == nil {
+			t.Errorf("Expected to get error")
+		} else if pqErr.Code != "22021" {
+			t.Fatalf("Expected to get invalid byte sequence for encoding error (22021), got %s", pqErr.Code)
+		}
+	}
+}
+
+func TestStringToUUID(t *testing.T) {
+	db := openTestConn(t)
+	defer db.Close()
+
+	s := "a0eebc99-9c0b-4ef8-bb00-6bb9bd380a11"
+	row := db.QueryRow("SELECT $1::uuid", s)
+
+	var result string
+	err := row.Scan(&result)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if result != s {
+		t.Fatalf("expected %v but got %v", s, result)
+	}
+}
+
+func TestTextByteSliceToInt(t *testing.T) {
+	db := openTestConn(t)
+	defer db.Close()
+
+	expected := 12345678
+	b := []byte(fmt.Sprintf("%d", expected))
+	row := db.QueryRow("SELECT $1::int", b)
+
+	var result int
+	err := row.Scan(&result)
+	if forceBinaryParameters() {
+		pqErr := err.(*Error)
+		if pqErr == nil {
+			t.Errorf("Expected to get error")
+		} else if pqErr.Code != "22P03" {
+			t.Fatalf("Expected to get invalid binary encoding error (22P03), got %s", pqErr.Code)
+		}
+	} else {
+		if err != nil {
+			t.Fatal(err)
+		}
+		if result != expected {
+			t.Fatalf("expected %v but got %v", expected, result)
+		}
+	}
+}
+
+func TestBinaryByteSliceToInt(t *testing.T) {
+	db := openTestConn(t)
+	defer db.Close()
+
+	expected := 12345678
+	b := []byte{'\x00', '\xbc', '\x61', '\x4e'}
+	row := db.QueryRow("SELECT $1::int", b)
+
+	var result int
+	err := row.Scan(&result)
+	if forceBinaryParameters() {
+		if err != nil {
+			t.Fatal(err)
+		}
+		if result != expected {
+			t.Fatalf("expected %v but got %v", expected, result)
+		}
+	} else {
+		pqErr := err.(*Error)
+		if pqErr == nil {
+			t.Errorf("Expected to get error")
+		} else if pqErr.Code != "22021" {
+			t.Fatalf("Expected to get invalid byte sequence for encoding error (22021), got %s", pqErr.Code)
+		}
 	}
 }
 
@@ -460,7 +591,7 @@ func TestByteaOutputFormats(t *testing.T) {
 		return
 	}
 
-	testByteaOutputFormat := func(f string) {
+	testByteaOutputFormat := func(f string, usePrepared bool) {
 		expectedData := []byte("\x5c\x78\x00\xff\x61\x62\x63\x01\x08")
 		sqlQuery := "SELECT decode('5c7800ff6162630108', 'hex')"
 
@@ -477,8 +608,18 @@ func TestByteaOutputFormats(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		// use Query; QueryRow would hide the actual error
-		rows, err := txn.Query(sqlQuery)
+		var rows *sql.Rows
+		var stmt *sql.Stmt
+		if usePrepared {
+			stmt, err = txn.Prepare(sqlQuery)
+			if err != nil {
+				t.Fatal(err)
+			}
+			rows, err = stmt.Query()
+		} else {
+			// use Query; QueryRow would hide the actual error
+			rows, err = txn.Query(sqlQuery)
+		}
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -496,13 +637,21 @@ func TestByteaOutputFormats(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		if stmt != nil {
+			err = stmt.Close()
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
 		if !bytes.Equal(data, expectedData) {
 			t.Errorf("unexpected bytea value %v for format %s; expected %v", data, f, expectedData)
 		}
 	}
 
-	testByteaOutputFormat("hex")
-	testByteaOutputFormat("escape")
+	testByteaOutputFormat("hex", false)
+	testByteaOutputFormat("escape", false)
+	testByteaOutputFormat("hex", true)
+	testByteaOutputFormat("escape", true)
 }
 
 func TestAppendEncodedText(t *testing.T) {

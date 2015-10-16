@@ -73,6 +73,10 @@ func Open(dialect string, args ...interface{}) (DB, error) {
 			db:       dbSql,
 		}
 		db.parent = &db
+
+		if err == nil {
+			err = db.DB().Ping() // Send a ping to make sure the database connection is alive.
+		}
 	}
 
 	return db, err
@@ -113,7 +117,7 @@ func (s *DB) Callback() *callback {
 }
 
 func (s *DB) SetLogger(l logger) {
-	s.parent.logger = l
+	s.logger = l
 }
 
 func (s *DB) LogMode(enable bool) *DB {
@@ -212,7 +216,7 @@ func (s *DB) Find(out interface{}, where ...interface{}) *DB {
 }
 
 func (s *DB) Scan(dest interface{}) *DB {
-	return s.clone().NewScope(s.Value).InstanceSet("gorm:query_destination", dest).callCallbacks(s.parent.callback.queries).db
+	return s.clone().NewScope(s.Value).Set("gorm:query_destination", dest).callCallbacks(s.parent.callback.queries).db
 }
 
 func (s *DB) Row() *sql.Row {
@@ -254,9 +258,9 @@ func (s *DB) FirstOrCreate(out interface{}, where ...interface{}) *DB {
 		if !result.RecordNotFound() {
 			return result
 		}
-		c.NewScope(out).inlineCondition(where...).initialize().callCallbacks(s.parent.callback.creates)
+		c.AddError(c.NewScope(out).inlineCondition(where...).initialize().callCallbacks(s.parent.callback.creates).db.Error)
 	} else if len(c.search.assignAttrs) > 0 {
-		c.NewScope(out).InstanceSet("gorm:update_interface", s.search.assignAttrs).callCallbacks(s.parent.callback.updates)
+		c.AddError(c.NewScope(out).InstanceSet("gorm:update_interface", s.search.assignAttrs).callCallbacks(s.parent.callback.updates).db.Error)
 	}
 	return c
 }
@@ -335,27 +339,27 @@ func (s *DB) Begin() *DB {
 	if db, ok := c.db.(sqlDb); ok {
 		tx, err := db.Begin()
 		c.db = interface{}(tx).(sqlCommon)
-		c.err(err)
+		c.AddError(err)
 	} else {
-		c.err(CantStartTransaction)
+		c.AddError(CantStartTransaction)
 	}
 	return c
 }
 
 func (s *DB) Commit() *DB {
 	if db, ok := s.db.(sqlTx); ok {
-		s.err(db.Commit())
+		s.AddError(db.Commit())
 	} else {
-		s.err(NoValidTransaction)
+		s.AddError(NoValidTransaction)
 	}
 	return s
 }
 
 func (s *DB) Rollback() *DB {
 	if db, ok := s.db.(sqlTx); ok {
-		s.err(db.Rollback())
+		s.AddError(db.Rollback())
 	} else {
-		s.err(NoValidTransaction)
+		s.AddError(NoValidTransaction)
 	}
 	return s
 }
@@ -369,22 +373,36 @@ func (s *DB) RecordNotFound() bool {
 }
 
 // Migrations
-func (s *DB) CreateTable(value interface{}) *DB {
-	return s.clone().NewScope(value).createTable().db
+func (s *DB) CreateTable(values ...interface{}) *DB {
+	db := s.clone()
+	for _, value := range values {
+		db = db.NewScope(value).createTable().db
+	}
+	return db
 }
 
-func (s *DB) DropTable(value interface{}) *DB {
-	return s.clone().NewScope(value).dropTable().db
+func (s *DB) DropTable(values ...interface{}) *DB {
+	db := s.clone()
+	for _, value := range values {
+		db = db.NewScope(value).dropTable().db
+	}
+	return db
 }
 
-func (s *DB) DropTableIfExists(value interface{}) *DB {
-	return s.clone().NewScope(value).dropTableIfExists().db
+func (s *DB) DropTableIfExists(values ...interface{}) *DB {
+	db := s.clone()
+	for _, value := range values {
+		db = db.NewScope(value).dropTableIfExists().db
+	}
+	return db
 }
 
 func (s *DB) HasTable(value interface{}) bool {
 	scope := s.clone().NewScope(value)
 	tableName := scope.TableName()
-	return scope.Dialect().HasTable(scope, tableName)
+	has := scope.Dialect().HasTable(scope, tableName)
+	s.AddError(scope.db.Error)
+	return has
 }
 
 func (s *DB) AutoMigrate(values ...interface{}) *DB {
@@ -396,28 +414,41 @@ func (s *DB) AutoMigrate(values ...interface{}) *DB {
 }
 
 func (s *DB) ModifyColumn(column string, typ string) *DB {
-	s.clone().NewScope(s.Value).modifyColumn(column, typ)
-	return s
+	scope := s.clone().NewScope(s.Value)
+	scope.modifyColumn(column, typ)
+	return scope.db
 }
 
 func (s *DB) DropColumn(column string) *DB {
-	s.clone().NewScope(s.Value).dropColumn(column)
-	return s
+	scope := s.clone().NewScope(s.Value)
+	scope.dropColumn(column)
+	return scope.db
 }
 
 func (s *DB) AddIndex(indexName string, column ...string) *DB {
-	s.clone().NewScope(s.Value).addIndex(false, indexName, column...)
-	return s
+	scope := s.clone().NewScope(s.Value)
+	scope.addIndex(false, indexName, column...)
+	return scope.db
 }
 
 func (s *DB) AddUniqueIndex(indexName string, column ...string) *DB {
-	s.clone().NewScope(s.Value).addIndex(true, indexName, column...)
-	return s
+	scope := s.clone().NewScope(s.Value)
+	scope.addIndex(true, indexName, column...)
+	return scope.db
 }
 
 func (s *DB) RemoveIndex(indexName string) *DB {
-	s.clone().NewScope(s.Value).removeIndex(indexName)
-	return s
+	scope := s.clone().NewScope(s.Value)
+	scope.removeIndex(indexName)
+	return scope.db
+}
+
+func (s *DB) CurrentDatabase() string {
+	var (
+		scope = s.clone().NewScope(s.Value)
+		name  = s.dialect.CurrentDatabase(scope)
+	)
+	return name
 }
 
 /*
@@ -427,8 +458,9 @@ Example:
 	db.Model(&User{}).AddForeignKey("city_id", "cities(id)", "RESTRICT", "RESTRICT")
 */
 func (s *DB) AddForeignKey(field string, dest string, onDelete string, onUpdate string) *DB {
-	s.clone().NewScope(s.Value).addForeignKey(field, dest, onDelete, onUpdate)
-	return s
+	scope := s.clone().NewScope(s.Value)
+	scope.addForeignKey(field, dest, onDelete, onUpdate)
+	return scope.db
 }
 
 func (s *DB) Association(column string) *Association {
@@ -439,10 +471,10 @@ func (s *DB) Association(column string) *Association {
 		err = errors.New("primary key can't be nil")
 	} else {
 		if field, ok := scope.FieldByName(column); ok {
-			if field.Relationship == nil || field.Relationship.ForeignFieldName == "" {
+			if field.Relationship == nil || len(field.Relationship.ForeignFieldNames) == 0 {
 				err = fmt.Errorf("invalid association %v for %v", column, scope.IndirectValue().Type())
 			} else {
-				return &Association{Scope: scope, Column: column, PrimaryKey: primaryField.Field.Interface(), Field: field}
+				return &Association{Scope: scope, Column: column, Field: field}
 			}
 		} else {
 			err = fmt.Errorf("%v doesn't have column %v", scope.IndirectValue().Type(), column)
@@ -473,19 +505,48 @@ func (s *DB) Get(name string) (value interface{}, ok bool) {
 }
 
 func (s *DB) SetJoinTableHandler(source interface{}, column string, handler JoinTableHandlerInterface) {
-	for _, field := range s.NewScope(source).GetModelStruct().StructFields {
+	scope := s.NewScope(source)
+	for _, field := range scope.GetModelStruct().StructFields {
 		if field.Name == column || field.DBName == column {
 			if many2many := parseTagSetting(field.Tag.Get("gorm"))["MANY2MANY"]; many2many != "" {
 				source := (&Scope{Value: source}).GetModelStruct().ModelType
 				destination := (&Scope{Value: reflect.New(field.Struct.Type).Interface()}).GetModelStruct().ModelType
 				handler.Setup(field.Relationship, many2many, source, destination)
 				field.Relationship.JoinTableHandler = handler
-				s.Table(handler.Table(s)).AutoMigrate(handler)
+				if table := handler.Table(s); scope.Dialect().HasTable(scope, table) {
+					s.Table(table).AutoMigrate(handler)
+				}
 			}
 		}
 	}
 }
 
-func (s *DB) SetTableNameHandler(source interface{}, handler func(*DB) string) {
-	s.NewScope(source).GetModelStruct().TableName = handler
+func (s *DB) AddError(err error) error {
+	if err != nil {
+		if err != RecordNotFound {
+			if s.logMode == 0 {
+				go s.print(fileWithLineNum(), err)
+			} else {
+				s.log(err)
+			}
+
+			errors := Errors{errors: s.GetErrors()}
+			errors.Add(err)
+			if len(errors.GetErrors()) > 1 {
+				err = errors
+			}
+		}
+
+		s.Error = err
+	}
+	return err
+}
+
+func (s *DB) GetErrors() (errors []error) {
+	if errs, ok := s.Error.(errorsInterface); ok {
+		return errs.GetErrors()
+	} else if s.Error != nil {
+		return []error{s.Error}
+	}
+	return
 }

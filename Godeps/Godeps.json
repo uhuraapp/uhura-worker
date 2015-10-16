@@ -4,27 +4,27 @@
 	"Deps": [
 		{
 			"ImportPath": "bitbucket.org/dukex/uhura-api/channels",
-			"Rev": "0a9b8cff823a78f1dc2c975f20b4403a683a1e6d"
+			"Rev": "3f0ac6100f16e1f35317fc00aaeaf781320af4a6"
 		},
 		{
 			"ImportPath": "bitbucket.org/dukex/uhura-api/database",
-			"Rev": "0a9b8cff823a78f1dc2c975f20b4403a683a1e6d"
+			"Rev": "3f0ac6100f16e1f35317fc00aaeaf781320af4a6"
 		},
 		{
 			"ImportPath": "bitbucket.org/dukex/uhura-api/entities",
-			"Rev": "0a9b8cff823a78f1dc2c975f20b4403a683a1e6d"
+			"Rev": "3f0ac6100f16e1f35317fc00aaeaf781320af4a6"
 		},
 		{
 			"ImportPath": "bitbucket.org/dukex/uhura-api/helpers",
-			"Rev": "0a9b8cff823a78f1dc2c975f20b4403a683a1e6d"
+			"Rev": "3f0ac6100f16e1f35317fc00aaeaf781320af4a6"
 		},
 		{
 			"ImportPath": "bitbucket.org/dukex/uhura-api/models",
-			"Rev": "0a9b8cff823a78f1dc2c975f20b4403a683a1e6d"
+			"Rev": "3f0ac6100f16e1f35317fc00aaeaf781320af4a6"
 		},
 		{
 			"ImportPath": "bitbucket.org/dukex/uhura-api/parser",
-			"Rev": "0a9b8cff823a78f1dc2c975f20b4403a683a1e6d"
+			"Rev": "3f0ac6100f16e1f35317fc00aaeaf781320af4a6"
 		},
 		{
 			"ImportPath": "code.google.com/p/go-charset/charset",
@@ -37,28 +37,13 @@
 			"Rev": "ebbeafdc430eb6c7e44e9a730a38eaff4c56ba3a"
 		},
 		{
-			"ImportPath": "code.google.com/p/go.crypto/bcrypt",
-			"Comment": "null-191",
-			"Rev": "7aa593ce8ceaf0199504fff27455bbb60eedabc7"
-		},
-		{
-			"ImportPath": "code.google.com/p/go.crypto/blowfish",
-			"Comment": "null-191",
-			"Rev": "7aa593ce8ceaf0199504fff27455bbb60eedabc7"
-		},
-		{
-			"ImportPath": "code.google.com/p/goauth2/oauth",
-			"Comment": "weekly-56",
-			"Rev": "afe77d958c701557ec5dc56f6936fcc194d15520"
-		},
-		{
 			"ImportPath": "github.com/PuerkitoBio/goquery",
-			"Comment": "v0.3.2-74-g5203bc0",
-			"Rev": "5203bc06dacf2192e0f4a9879010b9f14c861d14"
+			"Comment": "v0.3.2-79-gb444041",
+			"Rev": "b4440419d81240f8451a505b2f806c853bc2befc"
 		},
 		{
 			"ImportPath": "github.com/andybalholm/cascadia",
-			"Rev": "54abbbf07a45a3ef346ebe903e0715d9a3c19352"
+			"Rev": "3ad29d1ad1c4f2023e355603324348cf1f4b2d48"
 		},
 		{
 			"ImportPath": "github.com/bitly/go-simplejson",
@@ -67,11 +52,12 @@
 		},
 		{
 			"ImportPath": "github.com/dchest/uniuri",
-			"Rev": "bc4af7603a3e0ce9d58009f82fca481555182e1c"
+			"Rev": "a64716164ed9ab199e34c152969bfb6b8748dbb9"
 		},
 		{
-			"ImportPath": "github.com/dukex/login2",
-			"Rev": "c49bc1d83e290816d616dd198d7104aca4dfc718"
+			"ImportPath": "github.com/dukex/go-auth",
+			"Comment": "v1.0.0-13-g8a0710d",
+			"Rev": "8a0710dedf6dc170b4e280c0b0d897dcdcf0d61a"
 		},
 		{
 			"ImportPath": "github.com/dukex/mixpanel",
@@ -79,40 +65,40 @@
 		},
 		{
 			"ImportPath": "github.com/fiam/gounidecode/unidecode",
-			"Rev": "311ebb7422d3ff70cc1d064c5a297520ff5f304a"
+			"Rev": "8deddbd03fec2c28969266e52f27b6fb22be1823"
 		},
 		{
 			"ImportPath": "github.com/garyburd/redigo/internal",
-			"Rev": "535138d7bcd717d6531c701ef5933d98b1866257"
+			"Rev": "a1be60a4bbcb30fef4d7aeddad2475b448aba068"
 		},
 		{
 			"ImportPath": "github.com/garyburd/redigo/redis",
-			"Rev": "535138d7bcd717d6531c701ef5933d98b1866257"
+			"Rev": "a1be60a4bbcb30fef4d7aeddad2475b448aba068"
 		},
 		{
 			"ImportPath": "github.com/gin-gonic/gin",
-			"Comment": "v1.0rc1-126-g5f2f8d9",
-			"Rev": "5f2f8d9cb443a2c31babfbaf7980370995522d5f"
+			"Comment": "v1.0rc1-136-gfd5d429",
+			"Rev": "fd5d4294a5d5223d55fc76d7840f4b0ad91647bb"
 		},
 		{
 			"ImportPath": "github.com/gorilla/context",
-			"Rev": "14f550f51af52180c2eefed15e5fd18d63c0a64a"
+			"Rev": "215affda49addc4c8ef7e2534915df2c8c35c6cd"
 		},
 		{
 			"ImportPath": "github.com/gorilla/securecookie",
-			"Rev": "155134204c034796bcd7a72c1e1b53ba005735c6"
+			"Rev": "aeade84400a85c6875264ae51c7a56ecdcb61751"
 		},
 		{
 			"ImportPath": "github.com/gorilla/sessions",
-			"Rev": "1ace0650f7b7ebbf58eb835609698352efeb9cc9"
+			"Rev": "f61c3ec2cf65d69e7efedfd4d060fe128882c951"
 		},
 		{
 			"ImportPath": "github.com/jinzhu/gorm",
-			"Rev": "25772352c2e1cb6a9c00472999015a32dd646218"
+			"Rev": "1d5f5f43f37a19d452a920447108de6e9e7b5e96"
 		},
 		{
 			"ImportPath": "github.com/jrallison/go-workers",
-			"Rev": "1eb53815f400d1549afe27913e0bde68ac969c3c"
+			"Rev": "a5368356aa61a226ca34f130ea9c312eda3d8d25"
 		},
 		{
 			"ImportPath": "github.com/jteeuwen/go-pkg-rss",
@@ -124,12 +110,12 @@
 		},
 		{
 			"ImportPath": "github.com/lib/pq",
-			"Comment": "go1.0-cutoff-47-g93e9980",
-			"Rev": "93e9980741c9e593411b94e07d5bad8cfb4809db"
+			"Comment": "go1.0-cutoff-59-gb269bd0",
+			"Rev": "b269bd035a727d6c1081f76e7a239a1b00674c40"
 		},
 		{
 			"ImportPath": "github.com/manucorporat/sse",
-			"Rev": "c142f0f1baea5cef7f98a8a6c222f6134368c1f5"
+			"Rev": "fe6ea2c8e398672518ef204bf0fbd9af858d0e15"
 		},
 		{
 			"ImportPath": "github.com/mattn/go-colorable",
@@ -141,25 +127,41 @@
 		},
 		{
 			"ImportPath": "github.com/op/go-logging",
-			"Rev": "e5fb9bb8a3a168cc269b38f092b65d2e18cebb9a"
+			"Rev": "e8d5414f0947014548c2334044a0fac13187dfee"
+		},
+		{
+			"ImportPath": "github.com/qor/inflection",
+			"Rev": "45321e63b98c756df17369c027c1df89298e1288"
 		},
 		{
 			"ImportPath": "github.com/stvp/rollbar",
-			"Comment": "v0.3.1-4-g3f10961",
-			"Rev": "3f10961d0bdb493ad6a6ecec9fb16d97c33d593e"
+			"Comment": "v0.3.1-11-g1522f13",
+			"Rev": "1522f137dc8f896d1f9a21126f02de7b6d2400d8"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/bcrypt",
+			"Rev": "7d5b0be716b9d6d4269afdaae10032bb296d3cdf"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/blowfish",
+			"Rev": "7d5b0be716b9d6d4269afdaae10032bb296d3cdf"
 		},
 		{
 			"ImportPath": "golang.org/x/net/context",
-			"Rev": "d9558e5c97f85372afee28cf2b6059d7d3818919"
+			"Rev": "51854aba4682903632d14998d47781fe34e62a02"
 		},
 		{
 			"ImportPath": "golang.org/x/net/html",
-			"Rev": "d9558e5c97f85372afee28cf2b6059d7d3818919"
+			"Rev": "51854aba4682903632d14998d47781fe34e62a02"
+		},
+		{
+			"ImportPath": "golang.org/x/oauth2",
+			"Rev": "8914e5017ca260f2a3a1575b1e6868874050d95e"
 		},
 		{
 			"ImportPath": "gopkg.in/bluesuncorp/validator.v5",
-			"Comment": "v5.10",
-			"Rev": "d2748d5ae5e5af5ec3a85e3a59bf0db9d741c82d"
+			"Comment": "v5.10.3",
+			"Rev": "77108103e5fd435ff31967e1a011fda801391c85"
 		}
 	]
 }

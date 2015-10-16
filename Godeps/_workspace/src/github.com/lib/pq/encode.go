@@ -3,6 +3,7 @@ package pq
 import (
 	"bytes"
 	"database/sql/driver"
+	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 	"math"
@@ -13,6 +14,16 @@ import (
 
 	"github.com/lib/pq/oid"
 )
+
+func binaryEncode(parameterStatus *parameterStatus, x interface{}) []byte {
+	switch v := x.(type) {
+	case []byte:
+		return v
+	default:
+		return encode(parameterStatus, x, oid.T_unknown)
+	}
+	panic("not reached")
+}
 
 func encode(parameterStatus *parameterStatus, x interface{}, pgtypOid oid.Oid) []byte {
 	switch v := x.(type) {
@@ -44,7 +55,33 @@ func encode(parameterStatus *parameterStatus, x interface{}, pgtypOid oid.Oid) [
 	panic("not reached")
 }
 
-func decode(parameterStatus *parameterStatus, s []byte, typ oid.Oid) interface{} {
+func decode(parameterStatus *parameterStatus, s []byte, typ oid.Oid, f format) interface{} {
+	if f == formatBinary {
+		return binaryDecode(parameterStatus, s, typ)
+	} else {
+		return textDecode(parameterStatus, s, typ)
+	}
+}
+
+func binaryDecode(parameterStatus *parameterStatus, s []byte, typ oid.Oid) interface{} {
+	switch typ {
+	case oid.T_bytea:
+		return s
+	case oid.T_int8:
+		return int64(binary.BigEndian.Uint64(s))
+	case oid.T_int4:
+		return int64(int32(binary.BigEndian.Uint32(s)))
+	case oid.T_int2:
+		return int64(int16(binary.BigEndian.Uint16(s)))
+
+	default:
+		errorf("don't know how to decode binary parameter of type %u", uint32(typ))
+	}
+
+	panic("not reached")
+}
+
+func textDecode(parameterStatus *parameterStatus, s []byte, typ oid.Oid) interface{} {
 	switch typ {
 	case oid.T_bytea:
 		return parseBytea(s)
@@ -58,7 +95,7 @@ func decode(parameterStatus *parameterStatus, s []byte, typ oid.Oid) interface{}
 		return mustParse("15:04:05-07", typ, s)
 	case oid.T_bool:
 		return s[0] == 't'
-	case oid.T_int8, oid.T_int2, oid.T_int4:
+	case oid.T_int8, oid.T_int4, oid.T_int2:
 		i, err := strconv.ParseInt(string(s), 10, 64)
 		if err != nil {
 			errorf("%s", err)

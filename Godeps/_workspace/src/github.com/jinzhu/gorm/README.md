@@ -1,5 +1,7 @@
 # GORM
 
+[![Join the chat at https://gitter.im/jinzhu/gorm](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/jinzhu/gorm?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 The fantastic ORM library for Golang, aims to be developer friendly.
 
 [![wercker status](https://app.wercker.com/status/0cb7bb1039e21b74f8274941428e0921/s/master "wercker status")](https://app.wercker.com/project/bykey/0cb7bb1039e21b74f8274941428e0921)
@@ -27,6 +29,14 @@ The fantastic ORM library for Golang, aims to be developer friendly.
 ```
 go get -u github.com/jinzhu/gorm
 ```
+
+## Documentation 
+
+[![GoDoc](https://godoc.org/github.com/jinzhu/gorm?status.svg)](https://godoc.org/github.com/jinzhu/gorm)
+
+`go doc` format documentation for this project can be viewed online without
+installing the package by using the GoDoc page at:
+http://godoc.org/github.com/jinzhu/gorm
 
 ## Define Models (Structs)
 
@@ -117,7 +127,7 @@ db, err := gorm.Open("postgres", "user=gorm dbname=gorm sslmode=disable")
 
 // You can also use an existing database connection handle
 // dbSql, _ := sql.Open("postgres", "user=gorm dbname=gorm sslmode=disable")
-// db := gorm.Open("postgres", dbSql)
+// db, _ := gorm.Open("postgres", dbSql)
 
 // Get database connection handle [*sql.DB](http://golang.org/pkg/database/sql/#DB)
 db.DB()
@@ -136,12 +146,20 @@ db.SingularTable(true)
 ```go
 // Create table
 db.CreateTable(&User{})
+db.Set("gorm:table_options", "ENGINE=InnoDB").CreateTable(&User{})
 
 // Drop table
 db.DropTable(&User{})
 
+// ModifyColumn
+db.Model(&User{}).ModifyColumn("description", "text")
+
+// DropColumn
+db.Model(&User{}).DropColumn("description")
+
 // Automating Migration
 db.AutoMigrate(&User{})
+db.Set("gorm:table_options", "ENGINE=InnoDB").AutoMigrate(&User{})
 db.AutoMigrate(&User{}, &Product{}, &Order{})
 // Feel free to change your struct, AutoMigrate will keep your database up-to-date.
 // AutoMigrate will ONLY add *new columns* and *new indexes*,
@@ -845,21 +863,54 @@ for rows.Next() {
 }
 
 db.Table("users").Select("users.name, emails.email").Joins("left join emails on emails.user_id = users.id").Scan(&results)
+
+// find a user by email address
+db.Joins("inner join emails on emails.user_id = users.id").Where("emails.email = ?", "x@example.org").Find(&user)
+
+// find all email addresses for a user
+db.Joins("left join users on users.id = emails.user_id").Where("users.name = ?", "jinzhu").Find(&emails)
 ```
 
 ## Transactions
 
-All individual save and delete operations are run in a transaction by default.
+To perform a set of operations within a transaction, the general flow is as below.
+The database handle returned from ``` db.Begin() ``` should be used for all operations within the transaction.
+(Note that all individual save and delete operations are run in a transaction by default.)
 
 ```go
 // begin
 tx := db.Begin()
 
-// rollback
+// do some database operations (use 'tx' from this point, not 'db')
+tx.Create(...)
+...
+
+// rollback in case of error
 tx.Rollback()
 
-// commit
+// Or commit if all is ok
 tx.Commit()
+```
+
+### A Specific Example
+```
+func CreateAnimals(db *gorm.DB) err {
+  tx := db.Begin()
+  // Note the use of tx as the database handle once you are within a transaction
+
+  if err := tx.Create(&Animal{Name: "Giraffe"}).Error; err != nil {
+     tx.Rollback()
+     return err
+  }
+
+  if err := tx.Create(&Animal{Name: "Lion"}).Error; err != nil {
+     tx.Rollback()
+     return err
+  }
+
+  tx.Commit()
+  return nil
+}
 ```
 
 ## Scopes
@@ -1091,7 +1142,7 @@ type Product struct {
 // 2nd param : destination table(id)
 // 3rd param : ONDELETE
 // 4th param : ONUPDATE
-db.Model(&User{}).AddForeignKey("role_id", "roles", "CASCADE", "RESTRICT")
+db.Model(&User{}).AddForeignKey("city_id", "cities(id)", "RESTRICT", "RESTRICT")
 
 // Add index
 db.Model(&User{}).AddIndex("idx_user_name", "name")
@@ -1167,12 +1218,7 @@ db.Where("email = ?", "x@example.org").Attrs(User{RegisteredIp: "111.111.111.111
 ```
 
 ## TODO
-* db.Select("Languages", "Name").Update(&user)
-  db.Omit("Languages").Update(&user)
-* Auto migrate indexes
 * Github Pages
-* AlertColumn, DropColumn
-* R/W Splitting, Validation
 
 # Author
 

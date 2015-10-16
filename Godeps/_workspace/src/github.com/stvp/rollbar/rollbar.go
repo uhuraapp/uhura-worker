@@ -54,6 +54,10 @@ var (
 	// Output of error, by default stderr
 	ErrorWriter = os.Stderr
 
+	// All errors and messages will be submitted under this code
+	// version. If this is blank no value will be sent
+	CodeVersion = ""
+
 	// Queue of messages to be sent.
 	bodyChannel chan map[string]interface{}
 	waitGroup   sync.WaitGroup
@@ -121,7 +125,7 @@ func RequestErrorWithStackSkip(level string, r *http.Request, err error, skip in
 // http.Request, and a custom Stack. You You can pass, optionally, custom
 // Fields to be passed on to Rollbar.
 func RequestErrorWithStack(level string, r *http.Request, err error, stack Stack, fields ...*Field) {
-	buildAndPushError(level, err, stack, &Field{Name: "request", Data: errorRequest(r)})
+	buildAndPushError(level, err, stack, append(fields, &Field{Name: "request", Data: errorRequest(r)})...)
 }
 
 func buildError(level string, err error, stack Stack, fields ...*Field) map[string]interface{} {
@@ -169,23 +173,28 @@ func buildBody(level, title string) map[string]interface{} {
 	timestamp := time.Now().Unix()
 	hostname, _ := os.Hostname()
 
+	data := map[string]interface{}{
+		"environment": Environment,
+		"title":       title,
+		"level":       level,
+		"timestamp":   timestamp,
+		"platform":    Platform,
+		"language":    "go",
+		"server": map[string]interface{}{
+			"host": hostname,
+		},
+		"notifier": map[string]interface{}{
+			"name":    NAME,
+			"version": VERSION,
+		},
+	}
+	if CodeVersion != "" {
+		data["code_version"] = CodeVersion
+	}
+
 	return map[string]interface{}{
 		"access_token": Token,
-		"data": map[string]interface{}{
-			"environment": Environment,
-			"title":       title,
-			"level":       level,
-			"timestamp":   timestamp,
-			"platform":    Platform,
-			"language":    "go",
-			"server": map[string]interface{}{
-				"host": hostname,
-			},
-			"notifier": map[string]interface{}{
-				"name":    NAME,
-				"version": VERSION,
-			},
-		},
+		"data":         data,
 	}
 }
 
@@ -219,7 +228,8 @@ func errorRequest(r *http.Request) map[string]interface{} {
 		"GET":          flattenValues(cleanQuery),
 
 		// POST / PUT params
-		"POST": flattenValues(filterParams(r.Form)),
+		"POST":    flattenValues(filterParams(r.Form)),
+		"user_ip": r.RemoteAddr,
 	}
 }
 

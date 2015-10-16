@@ -35,9 +35,11 @@ func Create(scope *Scope) {
 						}
 					}
 				} else if relationship := field.Relationship; relationship != nil && relationship.Kind == "belongs_to" {
-					if relationField := fields[relationship.ForeignDBName]; !scope.changeableField(relationField) {
-						columns = append(columns, scope.Quote(relationField.DBName))
-						sqls = append(sqls, scope.AddToVars(relationField.Field.Interface()))
+					for _, dbName := range relationship.ForeignDBNames {
+						if relationField := fields[dbName]; !scope.changeableField(relationField) {
+							columns = append(columns, scope.Quote(relationField.DBName))
+							sqls = append(sqls, scope.AddToVars(relationField.Field.Interface()))
+						}
 					}
 				}
 			}
@@ -70,18 +72,24 @@ func Create(scope *Scope) {
 				id, err := result.LastInsertId()
 				if scope.Err(err) == nil {
 					scope.db.RowsAffected, _ = result.RowsAffected()
-					if primaryField != nil {
+					if primaryField != nil && primaryField.IsBlank {
 						scope.Err(scope.SetColumn(primaryField, id))
 					}
 				}
 			}
 		} else {
 			if primaryField == nil {
-				if results, err := scope.SqlDB().Exec(scope.Sql, scope.SqlVars...); err != nil {
+				if results, err := scope.SqlDB().Exec(scope.Sql, scope.SqlVars...); err == nil {
 					scope.db.RowsAffected, _ = results.RowsAffected()
+				} else {
+					scope.Err(err)
 				}
-			} else if scope.Err(scope.SqlDB().QueryRow(scope.Sql, scope.SqlVars...).Scan(primaryField.Field.Addr().Interface())) == nil {
-				scope.db.RowsAffected = 1
+			} else {
+				if err := scope.Err(scope.SqlDB().QueryRow(scope.Sql, scope.SqlVars...).Scan(primaryField.Field.Addr().Interface())); err == nil {
+					scope.db.RowsAffected = 1
+				} else {
+					scope.Err(err)
+				}
 			}
 		}
 	}

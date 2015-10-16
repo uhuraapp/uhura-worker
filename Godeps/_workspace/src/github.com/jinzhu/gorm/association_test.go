@@ -6,13 +6,8 @@ import (
 )
 
 func TestHasOneAndHasManyAssociation(t *testing.T) {
-	DB.DropTable(Category{})
-	DB.DropTable(Post{})
-	DB.DropTable(Comment{})
-
-	DB.CreateTable(Category{})
-	DB.CreateTable(Post{})
-	DB.CreateTable(Comment{})
+	DB.DropTable(Category{}, Post{}, Comment{})
+	DB.CreateTable(Category{}, Post{}, Comment{})
 
 	post := Post{
 		Title:        "post 1",
@@ -23,11 +18,11 @@ func TestHasOneAndHasManyAssociation(t *testing.T) {
 	}
 
 	if err := DB.Save(&post).Error; err != nil {
-		t.Errorf("Got errors when save post")
+		t.Errorf("Got errors when save post", err.Error())
 	}
 
-	if DB.First(&Category{}, "name = ?", "Category 1").Error != nil {
-		t.Errorf("Category should be saved")
+	if err := DB.First(&Category{}, "name = ?", "Category 1").Error; err != nil {
+		t.Errorf("Category should be saved", err.Error())
 	}
 
 	var p Post
@@ -148,7 +143,6 @@ func TestManyToMany(t *testing.T) {
 		t.Errorf("Query many to many relations")
 	}
 
-	newLanguages = []Language{}
 	DB.Model(&user).Association("Languages").Find(&newLanguages)
 	if len(newLanguages) != len([]string{"ZH", "EN"}) {
 		t.Errorf("Should be able to find many to many relations")
@@ -187,6 +181,7 @@ func TestManyToMany(t *testing.T) {
 	var language Language
 	DB.Where("name = ?", "EE").First(&language)
 	DB.Model(&user).Association("Languages").Delete(language, &language)
+
 	if DB.Model(&user).Association("Languages").Count() != len(totalLanguages)-1 || len(user.Languages) != len(totalLanguages)-1 {
 		t.Errorf("Relations should be deleted with Delete")
 	}
@@ -194,7 +189,6 @@ func TestManyToMany(t *testing.T) {
 		t.Errorf("Language EE should not be deleted")
 	}
 
-	languages = []Language{}
 	DB.Where("name IN (?)", []string{"CC", "DD"}).Find(&languages)
 
 	user2 := User{Name: "Many2Many_User2", Languages: languages}

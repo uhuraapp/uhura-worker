@@ -21,10 +21,16 @@ const (
 	imageHost                              string        = "http://arcane-forest-5063.herokuapp.com"
 	episodePubDateFormat                   string        = "Mon, _2 Jan 2006 15:04:05 -0700"
 	episodePubDateFormatWithoutMiliseconds string        = "Mon, _2 Jan 2006 15:04 -0700"
+	episodePubDateFormatRFC822Extendend    string        = "_2 Mon 2006 15:04:05 -0700"
 	weekHours                              time.Duration = 24 * 7
 )
 
-var dateWithoutMiliseconds = regexp.MustCompile(`^\w{3}.{13,14}\d{2}:\d{2}\s`)
+var (
+	imageHosts             []string = []string{"https://images1.uhura.io", "https://images2.uhura.io"}
+	imageHostRegEx                  = regexp.MustCompile(`.+images\d.uhura.io`)
+	dateWithoutMiliseconds          = regexp.MustCompile(`^\w{3}.{13,14}\d{2}:\d{2}\s`)
+	dateRFC822Extedend              = regexp.MustCompile(`^\d{2}.\w{3}.\d{4}.\d{2}:\d{2}:\d{2}.-\d{4}`)
+)
 
 // Sync channel Class
 type Sync struct {
@@ -200,6 +206,10 @@ func (s Sync) fixPubDate(e *parser.Episode) (time.Time, error) {
 
 	if dateWithoutMiliseconds.MatchString(pubDate) {
 		return time.Parse(episodePubDateFormatWithoutMiliseconds, pubDate)
+	}
+
+	if dateRFC822Extedend.MatchString(pubDate) {
+		return time.Parse(episodePubDateFormatRFC822Extendend, pubDate)
 	}
 
 	return time.Parse(episodePubDateFormat, pubDate)

@@ -2,6 +2,7 @@ package sync
 
 import (
 	"errors"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -18,7 +19,6 @@ import (
 )
 
 const (
-	imageHost                              string        = "http://arcane-forest-5063.herokuapp.com"
 	episodePubDateFormat                   string        = "Mon, _2 Jan 2006 15:04:05 -0700"
 	episodePubDateFormatWithoutMiliseconds string        = "Mon, _2 Jan 2006 15:04 -0700"
 	episodePubDateFormatRFC822Extendend    string        = "_2 Mon 2006 15:04:05 -0700"
@@ -92,10 +92,11 @@ func (s *Sync) update() {
 func (s *Sync) cacheImage() {
 	currentImageURL := s.model.ImageUrl
 
-	if strings.Contains(currentImageURL, imageHost) {
+	if imageHostRegEx.MatchString(currentImageURL) {
 		return
 	}
 
+	imageHost := random(imageHosts)
 	resp, err := http.Get(imageHost + "/resolve?url=" + currentImageURL)
 	if err != nil {
 		return
@@ -275,4 +276,14 @@ func r(s []string) []string {
 		}
 	}
 	return t
+}
+
+func random(slice []string) string {
+	rand.Seed(time.Now().Unix())
+
+	for i := range slice {
+		j := rand.Intn(i + 1)
+		slice[i], slice[j] = slice[j], slice[i]
+	}
+	return slice[0]
 }

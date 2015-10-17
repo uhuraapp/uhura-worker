@@ -200,7 +200,8 @@ func (s Sync) buildEpisode(data *parser.Episode) (models.Episode, error) {
 }
 
 func (s Sync) fixPubDate(e *parser.Episode) (time.Time, error) {
-	pubDate := strings.Replace(e.PubDate, "GMT", "-0100", -1)
+	pubDate := strings.Replace(e.PubDate, "-5GMT", "-0500", -1)
+	pubDate = strings.Replace(e.PubDate, "GMT", "-0100", -1)
 	pubDate = strings.Replace(pubDate, "PST", "-0800", -1)
 	pubDate = strings.Replace(pubDate, "PDT", "-0700", -1)
 	pubDate = strings.Replace(pubDate, "EDT", "-0400", -1)

@@ -4,6 +4,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"time"
 
 	"bitbucket.org/dukex/uhura-api/database"
 	"bitbucket.org/dukex/uhura-api/models"
@@ -80,6 +81,10 @@ func syncLow(message *workers.Msg) {
 
 	s := syncRunner.NewSync(id)
 	s.Sync(p)
+
+	workers.EnqueueAt("sync-low", "sync", time.Now().Add(5*time.Minute), id)
+	workers.Enqueue("duplicate-episodes", "duplicateEpisodes", nil)
+	workers.Enqueue("orphan-channel", "orphanChannel", nil)
 }
 
 func sync(message *workers.Msg) {

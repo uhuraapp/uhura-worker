@@ -1,10 +1,13 @@
 package main
 
 import (
+	"fmt"
 	"net/url"
 	"os"
 	"strconv"
 	"time"
+
+	"gopkg.in/redis.v3"
 
 	"bitbucket.org/dukex/uhura-api/database"
 	"bitbucket.org/dukex/uhura-api/models"
@@ -19,7 +22,7 @@ import (
 var p gorm.DB
 
 func main() {
-	redis, err := url.Parse(os.Getenv("REDIS_URL"))
+	redisURL, err := url.Parse(os.Getenv("REDIS_URL"))
 
 	if err != nil {
 		panic("REDIS_URL error, " + err.Error())
@@ -28,10 +31,22 @@ func main() {
 	rollbar.Token = os.Getenv("ROLLBAR_KEY")
 	rollbar.Environment = os.Getenv("ROLLBAR_ENV")
 
-	password, _ := redis.User.Password()
+	password, _ := redisURL.User.Password()
+
+	client := redis.NewClient(&redis.Options{
+		Addr:     redisURL.Host,
+		Password: password, // no password set
+		DB:       0,        // use default DB
+	})
+
+	pong, err := client.Ping().Result()
+	fmt.Println(pong, err)
+
+	client.Del(workers.SCHEDULED_JOBS_KEY)
+	client.Close()
 
 	workers.Configure(map[string]string{
-		"server":   redis.Host,
+		"server":   redisURL.Host,
 		"password": password,
 		"database": "0",
 		"pool":     "20",

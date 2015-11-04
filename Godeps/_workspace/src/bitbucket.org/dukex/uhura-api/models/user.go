@@ -6,37 +6,52 @@ import (
 	"strconv"
 	"time"
 
+	"bitbucket.org/dukex/uhura-api/entities"
+
 	"github.com/dchest/uniuri"
 	authenticator "github.com/dukex/go-auth"
 	"github.com/jinzhu/gorm"
 )
 
 type User struct {
-	Id            int64
-	Name          string
-	Email         string `sql:"not null;unique"`
-	Password      string `sql:"type:varchar(100);"`
-	Locale        string
-	CreatedAt     time.Time
-	LastVisitedAt time.Time
-	Provider      string `sql:"type:varchar(100);"`
-	ProviderId    string `sql:"type:varchar(50);"`
-	RememberToken string `sql:"type:varchar(100);unique"`
-	ApiToken      string `sql:"type:varchar(100);unique"`
-	WelcomeMail   bool
-}
-
-type UserEntity struct {
-	Id         int64  `json:"id"`
-	Name       string `json:"name"`
-	Locale     string `json:"locale"`
-	Email      string `json:"email"`
-	ProviderId string `json:"provider_id"`
-	ApiToken   string `json:"token"`
+	Id                           int64
+	Name                         string
+	Email                        string `sql:"not null;unique"`
+	Password                     string `sql:"type:varchar(100);"`
+	Locale                       string
+	CreatedAt                    time.Time
+	LastVisitedAt                time.Time
+	Provider                     string `sql:"type:varchar(100);"`
+	ProviderId                   string `sql:"type:varchar(50);"`
+	RememberToken                string `sql:"type:varchar(100);unique"`
+	ApiToken                     string `sql:"type:varchar(100);unique"`
+	WelcomeMail                  bool
+	AgreeWithTheTermsAndPolicyAt time.Time
+	AgreeWithTheTermsAndPolicyIn string
+	OptInAt                      time.Time
+	DeletedAt                    time.Time
 }
 
 func (self User) TableName() string {
 	return "users"
+}
+
+type Profile struct {
+	ID       int64
+	Key      string
+	Username string
+	UserID   int64
+}
+
+func (self Profile) TableName() string {
+	return "profiles"
+}
+
+func ProfileKey(DB gorm.DB, userID string) string {
+	var key string
+	DB.Table(Profile{}.TableName()).Where("user_id = ?", userID).Pluck("key", &key)
+
+	return key
 }
 
 type UserHelper struct {
@@ -44,13 +59,11 @@ type UserHelper struct {
 }
 
 func (h *UserHelper) PasswordByEmail(email string) (string, bool) {
-	var u struct {
-		Password string
-	}
+	var u User
 
 	err := h.DB.Table(User{}.TableName()).
 		Select("password").
-		Where("email = ? ", email).Scan(&u).Error
+		Where("email = ? ", email).First(&u).Error
 
 	if err != nil {
 		return "", false
@@ -58,37 +71,44 @@ func (h *UserHelper) PasswordByEmail(email string) (string, bool) {
 
 	return u.Password, true
 }
-func (h *UserHelper) FindUserDataByEmail(email string) (string, bool) {
-	var user UserEntity
+
+func (h *UserHelper) FindUserDataByEmail(email string) (string, string, bool) {
+	var user entities.User
+
 	err := h.DB.Table(User{}.TableName()).
 		Where("email = ? ", email).First(&user).Error
 
 	if err != nil {
-		return "", false
+		return "", "", false
 	}
+
+	userId := strconv.Itoa(int(user.Id))
+
+	user.OptIn = !user.OptInAt.IsZero()
+	user.ProfileKey = ProfileKey(h.DB, userId)
 
 	userJSON, err := json.Marshal(&user)
 
 	if err != nil {
-		return "", false
+		return "", "", false
 	}
 
-	return string(userJSON), true
+	return string(userJSON), userId, true
 }
+
 func (h *UserHelper) FindUserByToken(token string) (string, bool) {
-	var u struct {
-		Id string
-	}
+	var u User
 
 	err := h.DB.Table(User{}.TableName()).
 		Select("id").
-		Where("api_token = ? ", token).Scan(&u).Error
+		Where("api_token = ? ", token).First(&u).Error
 
 	if err != nil {
 		return "", false
 	}
+	id := strconv.Itoa(int(u.Id))
 
-	return u.Id, true
+	return id, true
 }
 func (h *UserHelper) FindUserFromOAuth(provider string, user *authenticator.User, rawResponse *http.Response) (userID string, err error) {
 	var u struct {

@@ -27,9 +27,7 @@ func NewPostgresql() gorm.DB {
 
 	database.LogMode(os.Getenv("DEBUG") == "true")
 
-	if os.Getenv("MIGRATIONS") == "true" {
-		Migrations(database)
-	}
+	Migrations(database)
 
 	return database
 }
@@ -43,6 +41,7 @@ func Migrations(database gorm.DB) {
 	database.AutoMigrate(&models.Categoriable{})
 	database.AutoMigrate(&models.Category{})
 	database.AutoMigrate(&models.ChannelURL{})
+	database.AutoMigrate(&models.Profile{})
 
 	database.Model(&models.Channel{}).AddIndex("idx_channel_uri", "uri")
 	database.Model(&models.Channel{}).AddIndex("idx_channel_url", "url")
@@ -61,6 +60,11 @@ func Migrations(database gorm.DB) {
 	database.Model(&models.User{}).AddIndex("idx_user_by_token", "api_token")
 	database.Model(&models.User{}).AddIndex("idx_user_by_email", "email")
 	database.Model(&models.User{}).AddUniqueIndex("idx_user_email", "email")
+	database.Model(&models.User{}).AddUniqueIndex("idx_user_token", "api_token")
 
 	database.Model(&models.ChannelURL{}).AddUniqueIndex("idx_channel_url_url", "url")
+
+	database.Model(&models.Profile{}).AddUniqueIndex("idx_profile_key", "key")
+	database.Model(&models.Profile{}).AddUniqueIndex("idx_profile_user_id", "user_id")
+	database.Model(&models.Profile{}).AddIndex("idx_profile_by_key", "key")
 }

@@ -4,27 +4,27 @@
 	"Deps": [
 		{
 			"ImportPath": "bitbucket.org/dukex/uhura-api/channels",
-			"Rev": "3f0ac6100f16e1f35317fc00aaeaf781320af4a6"
+			"Rev": "77cd4f7182b81e9b6924dbf5d84cc12878bd37ea"
 		},
 		{
 			"ImportPath": "bitbucket.org/dukex/uhura-api/database",
-			"Rev": "3f0ac6100f16e1f35317fc00aaeaf781320af4a6"
+			"Rev": "77cd4f7182b81e9b6924dbf5d84cc12878bd37ea"
 		},
 		{
 			"ImportPath": "bitbucket.org/dukex/uhura-api/entities",
-			"Rev": "3f0ac6100f16e1f35317fc00aaeaf781320af4a6"
+			"Rev": "77cd4f7182b81e9b6924dbf5d84cc12878bd37ea"
 		},
 		{
 			"ImportPath": "bitbucket.org/dukex/uhura-api/helpers",
-			"Rev": "3f0ac6100f16e1f35317fc00aaeaf781320af4a6"
+			"Rev": "77cd4f7182b81e9b6924dbf5d84cc12878bd37ea"
 		},
 		{
 			"ImportPath": "bitbucket.org/dukex/uhura-api/models",
-			"Rev": "3f0ac6100f16e1f35317fc00aaeaf781320af4a6"
+			"Rev": "77cd4f7182b81e9b6924dbf5d84cc12878bd37ea"
 		},
 		{
 			"ImportPath": "bitbucket.org/dukex/uhura-api/parser",
-			"Rev": "3f0ac6100f16e1f35317fc00aaeaf781320af4a6"
+			"Rev": "77cd4f7182b81e9b6924dbf5d84cc12878bd37ea"
 		},
 		{
 			"ImportPath": "code.google.com/p/go-charset/charset",
@@ -56,8 +56,8 @@
 		},
 		{
 			"ImportPath": "github.com/dukex/go-auth",
-			"Comment": "v1.0.0-13-g8a0710d",
-			"Rev": "8a0710dedf6dc170b4e280c0b0d897dcdcf0d61a"
+			"Comment": "v1.0.0-16-gd4c7ccd",
+			"Rev": "d4c7ccd66a8cbf78111c8340d4656dc6432d2c05"
 		},
 		{
 			"ImportPath": "github.com/dukex/mixpanel",
@@ -73,11 +73,11 @@
 		},
 		{
 			"ImportPath": "github.com/garyburd/redigo/internal",
-			"Rev": "a1be60a4bbcb30fef4d7aeddad2475b448aba068"
+			"Rev": "6ece6e0a09f28cc399b21550cbf37ab39ba63cce"
 		},
 		{
 			"ImportPath": "github.com/garyburd/redigo/redis",
-			"Rev": "a1be60a4bbcb30fef4d7aeddad2475b448aba068"
+			"Rev": "6ece6e0a09f28cc399b21550cbf37ab39ba63cce"
 		},
 		{
 			"ImportPath": "github.com/gin-gonic/gin",

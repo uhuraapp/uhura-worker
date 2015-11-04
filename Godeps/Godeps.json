@@ -64,6 +64,10 @@
 			"Rev": "353602d3c3d2779e4b1d73c6d86f33eee018cf4e"
 		},
 		{
+			"ImportPath": "github.com/dukex/too",
+			"Rev": "619faef0462cb6548e7d2f2f989dbd21be4d8820"
+		},
+		{
 			"ImportPath": "github.com/fiam/gounidecode/unidecode",
 			"Rev": "8deddbd03fec2c28969266e52f27b6fb22be1823"
 		},

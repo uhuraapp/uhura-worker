@@ -14,6 +14,7 @@ import (
 	duplicates "bitbucket.org/dukex/uhura-worker/duplicates"
 	syncRunner "bitbucket.org/dukex/uhura-worker/sync"
 
+	"github.com/dukex/too"
 	"github.com/jinzhu/gorm"
 	"github.com/jrallison/go-workers"
 	"github.com/stvp/rollbar"
@@ -45,6 +46,8 @@ func main() {
 	client.Del(workers.SCHEDULED_JOBS_KEY)
 	client.Close()
 
+	p = database.NewPostgresql()
+
 	workers.Configure(map[string]string{
 		"server":   redisURL.Host,
 		"password": password,
@@ -55,16 +58,15 @@ func main() {
 
 	// heroku support 20 connections
 	workers.Process("sync", sync, 10)
-	workers.Process("sync-low", syncLow, 5)
+	workers.Process("sync-low", syncLow, 3)
 	workers.Process("duplicate-episodes", duplicateEpisodes, 1)
 	workers.Process("orphan-channels", orphanChannel, 1)
 	workers.Process("delete-episode", deleteEpisode, 2)
+	workers.Process("recommendations", recommendations(p), 2)
 
 	port, _ := strconv.Atoi(os.Getenv("PORT"))
 
 	go workers.StatsServer(port)
-
-	p = database.NewPostgresql()
 
 	go func() {
 		workers.Enqueue("orphan-channels", "orphanChannel", nil)
@@ -76,6 +78,7 @@ func main() {
 		}
 	}()
 
+	workers.Enqueue("recommendations", "recommendations", nil)
 	workers.Run()
 }
 
@@ -85,6 +88,31 @@ func reporter(message *workers.Msg) {
 		rollbar.ErrorWithStackSkip(rollbar.ERR, err, 5, &rollbar.Field{Name: "message", Data: message.ToJson()})
 		rollbar.Wait()
 		panic(r)
+	}
+}
+
+func recommendations(db gorm.DB) func(*workers.Msg) {
+	return func(message *workers.Msg) {
+		defer reporter(message)
+		var users []int64
+
+		p.Table(models.User{}.TableName()).Pluck("id", &users)
+
+		te, err := too.New(os.Getenv("RREDIS_URL"), "channels")
+		checkError(err)
+
+		for i := 0; i < len(users); i++ {
+			var subscriptions []models.Subscription
+			p.Table(models.Subscription{}.TableName()).Where("user_id = ?", users[i]).Find(&subscriptions)
+			userID := too.User(strconv.Itoa(int(users[i])))
+
+			for j := 0; j < len(subscriptions); j++ {
+				channelID := too.Item(strconv.Itoa(int(subscriptions[j].ChannelId)))
+				te.Likes.Add(userID, channelID)
+			}
+		}
+
+		workers.EnqueueAt("recommendations", "recommendations", time.Now().Add(5*time.Hour), nil)
 	}
 }
 

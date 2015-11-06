@@ -60,7 +60,7 @@ func main() {
 	workers.Process("sync", sync, 3)
 	workers.Process("sync-low", syncLow, 3)
 	workers.Process("duplicate-episodes", duplicateEpisodes, 5)
-	workers.Process("orphan-channels", orphanChannel, 5)
+	workers.Process("orphan-channel", orphanChannel, 5)
 	workers.Process("delete-episode", deleteEpisode, 2)
 	workers.Process("recommendations", recommendations(p), 1)
 
@@ -69,7 +69,7 @@ func main() {
 	go workers.StatsServer(port)
 
 	go func() {
-		workers.Enqueue("orphan-channels", "orphanChannel", nil)
+		workers.Enqueue("orphan-channel", "orphanChannel", nil)
 
 		var c []int64
 		p.Table(models.Channel{}.TableName()).Pluck("id", &c)

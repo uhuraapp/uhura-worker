@@ -43,7 +43,7 @@ func main() {
 	pong, err := client.Ping().Result()
 	fmt.Println(pong, err)
 
-	client.Del(workers.SCHEDULED_JOBS_KEY)
+	client.FlushDb()
 	client.Close()
 
 	p = database.NewPostgresql()

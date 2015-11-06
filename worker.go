@@ -57,12 +57,12 @@ func main() {
 	})
 
 	// heroku support 20 connections
-	workers.Process("sync", sync, 10)
+	workers.Process("sync", sync, 3)
 	workers.Process("sync-low", syncLow, 3)
-	workers.Process("duplicate-episodes", duplicateEpisodes, 1)
-	workers.Process("orphan-channels", orphanChannel, 1)
+	workers.Process("duplicate-episodes", duplicateEpisodes, 5)
+	workers.Process("orphan-channels", orphanChannel, 5)
 	workers.Process("delete-episode", deleteEpisode, 2)
-	workers.Process("recommendations", recommendations(p), 2)
+	workers.Process("recommendations", recommendations(p), 1)
 
 	port, _ := strconv.Atoi(os.Getenv("PORT"))
 

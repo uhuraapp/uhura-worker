@@ -112,7 +112,7 @@ func recommendations(db gorm.DB) func(*workers.Msg) {
 			}
 		}
 
-		workers.EnqueueAt("recommendations", "recommendations", time.Now().Add(5*time.Hour), nil)
+		workers.EnqueueAt("recommendations", "recommendations", time.Now().Add(5*time.Minute), nil)
 	}
 }
 

@@ -46,6 +46,10 @@ func Episodes(DB gorm.DB) []int64 {
 func organizeDuplicates(episodes []episode) map[string][]episode {
 	duplicateEpisodes := make(map[string][]episode)
 	for _, e := range episodes {
+		if len(duplicateEpisodes[e.Title]) == 0 {
+			duplicateEpisodes[e.Title] = make([]episode, 0)
+		}
+
 		duplicateEpisodes[strings.ToLower(e.Title)] = append(duplicateEpisodes[e.Title], e)
 	}
 	return duplicateEpisodes

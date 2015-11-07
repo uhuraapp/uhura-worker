@@ -114,7 +114,7 @@ func recommendations(p gorm.DB) func(*workers.Msg) {
 			log.Println("too", "--------------------------")
 		}
 
-		workers.EnqueueAt("recommendations", "recommendations", time.Now().Add(5*time.Minute), nil)
+		workers.EnqueueAt("recommendations", "recommendations", time.Now().Add(12*time.Hour), nil)
 	}
 }
 

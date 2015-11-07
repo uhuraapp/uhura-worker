@@ -158,13 +158,12 @@ func sync(p gorm.DB) func(*workers.Msg) {
 
 func duplicateEpisodes(p gorm.DB) func(*workers.Msg) {
 	return func(message *workers.Msg) {
-
 		defer reporter(message)
-
 		episodes := duplicates.Episodes(p)
-		for _, id := range episodes {
-			p.Table(models.Episode{}.TableName()).Where("id = ?", id).Delete(models.Episode{})
-		}
+		log.Println("Dup episodes", episodes)
+		p.Table(models.Episode{}.TableName()).Where("id in (?)", episodes).Delete(models.Episode{})
+
+		workers.Enqueue("duplicate-episodes", "duplicateEpisodes", nil)
 	}
 }
 

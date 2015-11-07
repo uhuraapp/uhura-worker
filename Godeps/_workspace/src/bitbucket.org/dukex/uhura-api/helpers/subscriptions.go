@@ -7,7 +7,7 @@ import (
 
 func UserSubscriptions(userID string, db gorm.DB, subscriptionsTableName, channelsTableName, profileID string) ([]entities.Subscription, []string) {
 	var ids []int
-	var uids []string
+	uids := make([]string, 0)
 	subscriptions := make([]entities.Subscription, 0)
 
 	db.Table(subscriptionsTableName).Where("user_id = ?", userID).

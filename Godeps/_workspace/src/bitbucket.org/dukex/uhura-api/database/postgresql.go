@@ -27,6 +27,10 @@ func NewPostgresql() gorm.DB {
 
 	database.LogMode(os.Getenv("DEBUG") == "true")
 
+	database.DB().Ping()
+	database.DB().SetMaxIdleConns(10)
+	database.DB().SetMaxOpenConns(20)
+
 	Migrations(database)
 
 	return database

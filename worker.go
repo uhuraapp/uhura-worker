@@ -6,16 +6,13 @@ import (
 	"net/url"
 	"os"
 	"strconv"
-	"time"
 
 	"gopkg.in/redis.v3"
 
 	"bitbucket.org/dukex/uhura-api/database"
 	"bitbucket.org/dukex/uhura-api/models"
 	duplicates "bitbucket.org/dukex/uhura-worker/duplicates"
-	syncRunner "bitbucket.org/dukex/uhura-worker/sync"
 
-	"github.com/dukex/too"
 	"github.com/jinzhu/gorm"
 	"github.com/jrallison/go-workers"
 	"github.com/stvp/rollbar"
@@ -58,9 +55,9 @@ func main() {
 	// heroku support 20 connections
 	// workers.Process("sync", sync(p), 2)
 	// workers.Process("sync-low", syncLow(p), 4)
-	workers.Process("duplicate-episodes", duplicateEpisodes(p), 3)
+	workers.Process("duplicate-episodes", duplicateEpisodes(p), 1)
 	// workers.Process("orphan-channel", orphanChannel(p), 2)
-	// workers.Process("delete-episode", deleteEpisode(p), 3)
+	workers.Process("delete-episode", deleteEpisode(p), 14)
 	// workers.Process("recommendations", recommendations(p), 1)
 
 	port, _ := strconv.Atoi(os.Getenv("PORT"))
@@ -92,80 +89,76 @@ func reporter(message *workers.Msg) {
 	}
 }
 
-func recommendations(p gorm.DB) func(*workers.Msg) {
-	return func(message *workers.Msg) {
-		defer reporter(message)
-		var users []int64
-
-		p.Table(models.User{}.TableName()).Pluck("id", &users)
-
-		te, err := too.New(os.Getenv("RREDIS_URL"), "channels")
-		checkError(err)
-
-		for i := 0; i < len(users); i++ {
-			var subscriptions []models.Subscription
-			p.Table(models.Subscription{}.TableName()).Where("user_id = ?", users[i]).Find(&subscriptions)
-			userID := too.User(strconv.Itoa(int(users[i])))
-			log.Println("too", userID)
-
-			for j := 0; j < len(subscriptions); j++ {
-				channelID := too.Item(strconv.Itoa(int(subscriptions[j].ChannelId)))
-				log.Println("too", channelID)
-				log.Println("too", te.Likes.Add(userID, channelID))
-			}
-			log.Println("too", "--------------------------")
-		}
-
-		workers.EnqueueAt("recommendations", "recommendations", time.Now().Add(12*time.Hour), nil)
-	}
-}
-
-func syncLow(p gorm.DB) func(*workers.Msg) {
-	return func(message *workers.Msg) {
-
-		defer reporter(message)
-
-		id, err := message.Args().Int64()
-		checkError(err)
-
-		s := syncRunner.NewSync(id)
-		s.Sync(p)
-
-		workers.EnqueueAt("sync-low", "sync", time.Now().Add(5*time.Minute), id)
-		workers.Enqueue("duplicate-episodes", "duplicateEpisodes", nil)
-		workers.Enqueue("orphan-channel", "orphanChannel", nil)
-	}
-}
-
-func sync(p gorm.DB) func(*workers.Msg) {
-	return func(message *workers.Msg) {
-
-		defer reporter(message)
-
-		id, err := message.Args().Int64()
-		checkError(err)
-
-		s := syncRunner.NewSync(id)
-		s.Sync(p)
-
-		nextRunAt, err := s.GetNextRun()
-		checkError(err)
-
-		workers.EnqueueAt("sync", "sync", nextRunAt, id)
-		workers.Enqueue("duplicate-episodes", "duplicateEpisodes", nil)
-		workers.Enqueue("orphan-channel", "orphanChannel", nil)
-	}
-}
+// func recommendations(p gorm.DB) func(*workers.Msg) {
+// 	return func(message *workers.Msg) {
+// 		defer reporter(message)
+// 		var users []int64
+//
+// 		p.Table(models.User{}.TableName()).Pluck("id", &users)
+//
+// 		te, err := too.New(os.Getenv("RREDIS_URL"), "channels")
+// 		checkError(err)
+//
+// 		for i := 0; i < len(users); i++ {
+// 			var subscriptions []models.Subscription
+// 			p.Table(models.Subscription{}.TableName()).Where("user_id = ?", users[i]).Find(&subscriptions)
+// 			userID := too.User(strconv.Itoa(int(users[i])))
+// 			log.Println("too", userID)
+//
+// 			for j := 0; j < len(subscriptions); j++ {
+// 				channelID := too.Item(strconv.Itoa(int(subscriptions[j].ChannelId)))
+// 				log.Println("too", channelID)
+// 				log.Println("too", te.Likes.Add(userID, channelID))
+// 			}
+// 			log.Println("too", "--------------------------")
+// 		}
+//
+// 		workers.EnqueueAt("recommendations", "recommendations", time.Now().Add(12*time.Hour), nil)
+// 	}
+// }
+//
+// func syncLow(p gorm.DB) func(*workers.Msg) {
+// 	return func(message *workers.Msg) {
+//
+// 		defer reporter(message)
+//
+// 		id, err := message.Args().Int64()
+// 		checkError(err)
+//
+// 		s := syncRunner.NewSync(id)
+// 		s.Sync(p)
+//
+// 		workers.EnqueueAt("sync-low", "sync", time.Now().Add(5*time.Minute), id)
+// 		workers.Enqueue("orphan-channel", "orphanChannel", nil)
+// 	}
+// }
+//
+// func sync(p gorm.DB) func(*workers.Msg) {
+// 	return func(message *workers.Msg) {
+//
+// 		defer reporter(message)
+//
+// 		id, err := message.Args().Int64()
+// 		checkError(err)
+//
+// 		s := syncRunner.NewSync(id)
+// 		s.Sync(p)
+//
+// 		nextRunAt, err := s.GetNextRun()
+// 		checkError(err)
+//
+// 		workers.EnqueueAt("sync", "sync", nextRunAt, id)
+// 		workers.Enqueue("orphan-channel", "orphanChannel", nil)
+// 	}
+// }
 
 func duplicateEpisodes(p gorm.DB) func(*workers.Msg) {
 	return func(message *workers.Msg) {
-		defer reporter(message)
 		episodes := duplicates.Episodes(p)
 		log.Println("Dup episodes", episodes)
 		if len(episodes) > 0 {
-			// To avoid bug delete one a one
 			for _, id := range episodes {
-				p.Table(models.Episode{}.TableName()).Where("id in (?)", id).Delete(models.Episode{})
+				workers.Enqueue("delete-episode", "deleteEpisode", id)
 			}
 		}
 		workers.Enqueue("duplicate-episodes", "duplicateEpisodes", nil)
@@ -174,9 +167,6 @@ func duplicateEpisodes(p gorm.DB) func(*workers.Msg) {
 
 func deleteEpisode(p gorm.DB) func(*workers.Msg) {
 	return func(message *workers.Msg) {
-
-		defer reporter(message)
-
 		id, err := message.Args().Int64()
 		checkError(err)
 
@@ -184,28 +174,29 @@ func deleteEpisode(p gorm.DB) func(*workers.Msg) {
 	}
 }
 
-func orphanChannel(p gorm.DB) func(*workers.Msg) {
-	return func(message *workers.Msg) {
-
-		defer reporter(message)
-
-		var channels []models.Channel
-		p.Table(models.Channel{}.TableName()).Find(&channels)
-
-		for _, channel := range channels {
-			var users []models.Subscription
-			p.Table(models.Subscription{}.TableName()).Where("channel_id = ?", channel.Id).Find(&users)
-			if len(users) < 1 {
-				var episodes []models.Episode
-				p.Table(models.Episode{}.TableName()).Where("channel_id = ?", channel.Id).Find(&episodes)
-				for _, e := range episodes {
-					workers.Enqueue("delete-episode", "deleteEpisode", e.Id)
-				}
-				p.Table(models.Channel{}.TableName()).Where("id = ?", channel.Id).Delete(models.Channel{})
-			}
-		}
-	}
-}
+//
+// func orphanChannel(p gorm.DB) func(*workers.Msg) {
+// 	return func(message *workers.Msg) {
+//
+// 		defer reporter(message)
+//
+// 		var channels []models.Channel
+// 		p.Table(models.Channel{}.TableName()).Find(&channels)
+//
+// 		for _, channel := range channels {
+// 			var users []models.Subscription
+// 			p.Table(models.Subscription{}.TableName()).Where("channel_id = ?", channel.Id).Find(&users)
+// 			if len(users) < 1 {
+// 				var episodes []models.Episode
+// 				p.Table(models.Episode{}.TableName()).Where("channel_id = ?", channel.Id).Find(&episodes)
+// 				for _, e := range episodes {
+// 					workers.Enqueue("delete-episode", "deleteEpisode", e.Id)
+// 				}
+// 				p.Table(models.Channel{}.TableName()).Where("id = ?", channel.Id).Delete(models.Channel{})
+// 			}
+// 		}
+// 	}
+// }
 
 func checkError(err error) {
 	if err != nil {

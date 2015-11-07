@@ -59,8 +59,8 @@ func main() {
 	// workers.Process("sync", sync(p), 3)
 	// workers.Process("sync-low", syncLow(p), 3)
 	// workers.Process("duplicate-episodes", duplicateEpisodes(p), 5)
-	// workers.Process("orphan-channel", orphanChannel(p), 5)
-	workers.Process("delete-episode", deleteEpisode(p), 14)
+	workers.Process("orphan-channel", orphanChannel(p), 5)
+	workers.Process("delete-episode", deleteEpisode(p), 9)
 	workers.Process("recommendations", recommendations(p), 1)
 
 	port, _ := strconv.Atoi(os.Getenv("PORT"))

@@ -21,8 +21,6 @@ import (
 	"github.com/stvp/rollbar"
 )
 
-var p gorm.DB
-
 func main() {
 	redisURL, err := url.Parse(os.Getenv("REDIS_URL"))
 
@@ -47,7 +45,7 @@ func main() {
 	client.FlushDb()
 	client.Close()
 
-	p = database.NewPostgresql()
+	p := database.NewPostgresql()
 
 	workers.Configure(map[string]string{
 		"server":   redisURL.Host,
@@ -58,11 +56,11 @@ func main() {
 	})
 
 	// heroku support 20 connections
-	workers.Process("sync", sync, 3)
-	workers.Process("sync-low", syncLow, 3)
-	workers.Process("duplicate-episodes", duplicateEpisodes, 5)
-	workers.Process("orphan-channel", orphanChannel, 5)
-	workers.Process("delete-episode", deleteEpisode, 2)
+	workers.Process("sync", sync(p), 3)
+	workers.Process("sync-low", syncLow(p), 3)
+	workers.Process("duplicate-episodes", duplicateEpisodes(p), 5)
+	workers.Process("orphan-channel", orphanChannel(p), 5)
+	workers.Process("delete-episode", deleteEpisode(p), 2)
 	workers.Process("recommendations", recommendations(p), 1)
 
 	port, _ := strconv.Atoi(os.Getenv("PORT"))
@@ -92,7 +90,7 @@ func reporter(message *workers.Msg) {
 	}
 }
 
-func recommendations(db gorm.DB) func(*workers.Msg) {
+func recommendations(p gorm.DB) func(*workers.Msg) {
 	return func(message *workers.Msg) {
 		defer reporter(message)
 		var users []int64
@@ -120,71 +118,86 @@ func recommendations(db gorm.DB) func(*workers.Msg) {
 	}
 }
 
-func syncLow(message *workers.Msg) {
-	defer reporter(message)
+func syncLow(p gorm.DB) func(*workers.Msg) {
+	return func(message *workers.Msg) {
 
-	id, err := message.Args().Int64()
-	checkError(err)
+		defer reporter(message)
 
-	s := syncRunner.NewSync(id)
-	s.Sync(p)
+		id, err := message.Args().Int64()
+		checkError(err)
 
-	workers.EnqueueAt("sync-low", "sync", time.Now().Add(5*time.Minute), id)
-	workers.Enqueue("duplicate-episodes", "duplicateEpisodes", nil)
-	workers.Enqueue("orphan-channel", "orphanChannel", nil)
-}
+		s := syncRunner.NewSync(id)
+		s.Sync(p)
 
-func sync(message *workers.Msg) {
-	defer reporter(message)
-
-	id, err := message.Args().Int64()
-	checkError(err)
-
-	s := syncRunner.NewSync(id)
-	s.Sync(p)
-
-	nextRunAt, err := s.GetNextRun()
-	checkError(err)
-
-	workers.EnqueueAt("sync", "sync", nextRunAt, id)
-	workers.Enqueue("duplicate-episodes", "duplicateEpisodes", nil)
-	workers.Enqueue("orphan-channel", "orphanChannel", nil)
-}
-
-func duplicateEpisodes(message *workers.Msg) {
-	defer reporter(message)
-
-	episodes := duplicates.Episodes(p)
-	for _, id := range episodes {
-		workers.Enqueue("delete-episode", "deleteEpisode", id)
+		workers.EnqueueAt("sync-low", "sync", time.Now().Add(5*time.Minute), id)
+		workers.Enqueue("duplicate-episodes", "duplicateEpisodes", nil)
+		workers.Enqueue("orphan-channel", "orphanChannel", nil)
 	}
 }
 
-func deleteEpisode(message *workers.Msg) {
-	defer reporter(message)
+func sync(p gorm.DB) func(*workers.Msg) {
+	return func(message *workers.Msg) {
 
-	id, err := message.Args().Int64()
-	checkError(err)
+		defer reporter(message)
 
-	p.Table(models.Episode{}.TableName()).Where("id = ?", id).Delete(models.Episode{})
+		id, err := message.Args().Int64()
+		checkError(err)
+
+		s := syncRunner.NewSync(id)
+		s.Sync(p)
+
+		nextRunAt, err := s.GetNextRun()
+		checkError(err)
+
+		workers.EnqueueAt("sync", "sync", nextRunAt, id)
+		workers.Enqueue("duplicate-episodes", "duplicateEpisodes", nil)
+		workers.Enqueue("orphan-channel", "orphanChannel", nil)
+	}
 }
 
-func orphanChannel(message *workers.Msg) {
-	defer reporter(message)
+func duplicateEpisodes(p gorm.DB) func(*workers.Msg) {
+	return func(message *workers.Msg) {
 
-	var channels []models.Channel
-	p.Table(models.Channel{}.TableName()).Find(&channels)
+		defer reporter(message)
 
-	for _, channel := range channels {
-		var users []models.Subscription
-		p.Table(models.Subscription{}.TableName()).Where("channel_id = ?", channel.Id).Find(&users)
-		if len(users) < 1 {
-			var episodes []models.Episode
-			p.Table(models.Episode{}.TableName()).Where("channel_id = ?", channel.Id).Find(&episodes)
-			for _, e := range episodes {
-				workers.Enqueue("delete-episode", "deleteEpisode", e.Id)
+		episodes := duplicates.Episodes(p)
+		for _, id := range episodes {
+			workers.Enqueue("delete-episode", "deleteEpisode", id)
+		}
+	}
+}
+
+func deleteEpisode(p gorm.DB) func(*workers.Msg) {
+	return func(message *workers.Msg) {
+
+		defer reporter(message)
+
+		id, err := message.Args().Int64()
+		checkError(err)
+
+		p.Table(models.Episode{}.TableName()).Where("id = ?", id).Delete(models.Episode{})
+	}
+}
+
+func orphanChannel(p gorm.DB) func(*workers.Msg) {
+	return func(message *workers.Msg) {
+
+		defer reporter(message)
+
+		var channels []models.Channel
+		p.Table(models.Channel{}.TableName()).Find(&channels)
+
+		for _, channel := range channels {
+			var users []models.Subscription
+			p.Table(models.Subscription{}.TableName()).Where("channel_id = ?", channel.Id).Find(&users)
+			if len(users) < 1 {
+				var episodes []models.Episode
+				p.Table(models.Episode{}.TableName()).Where("channel_id = ?", channel.Id).Find(&episodes)
+				for _, e := range episodes {
+					workers.Enqueue("delete-episode", "deleteEpisode", e.Id)
+				}
+				p.Table(models.Channel{}.TableName()).Where("id = ?", channel.Id).Delete(models.Channel{})
 			}
-			p.Table(models.Channel{}.TableName()).Where("id = ?", channel.Id).Delete(models.Channel{})
 		}
 	}
 }

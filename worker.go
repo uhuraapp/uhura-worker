@@ -13,7 +13,6 @@ import (
 	"bitbucket.org/dukex/uhura-api/models"
 	duplicates "bitbucket.org/dukex/uhura-worker/duplicates"
 
-	"github.com/jinzhu/gorm"
 	"github.com/jrallison/go-workers"
 	"github.com/stvp/rollbar"
 )
@@ -42,8 +41,6 @@ func main() {
 	client.FlushDb()
 	client.Close()
 
-	p := database.NewPostgresql()
-
 	workers.Configure(map[string]string{
 		"server":   redisURL.Host,
 		"password": password,
@@ -55,9 +52,9 @@ func main() {
 	// heroku support 20 connections
 	// workers.Process("sync", sync(p), 2)
 	// workers.Process("sync-low", syncLow(p), 4)
-	workers.Process("duplicate-episodes", duplicateEpisodes(p), 1)
+	workers.Process("duplicate-episodes", duplicateEpisodes, 1)
 	// workers.Process("orphan-channel", orphanChannel(p), 2)
-	workers.Process("delete-episode", deleteEpisode(p), 14)
+	workers.Process("delete-episode", deleteEpisode, 14)
 	// workers.Process("recommendations", recommendations(p), 1)
 
 	port, _ := strconv.Atoi(os.Getenv("PORT"))
@@ -152,25 +149,26 @@ func reporter(message *workers.Msg) {
 // 	}
 // }
 
-func duplicateEpisodes(p gorm.DB) func(*workers.Msg) {
-	return func(message *workers.Msg) {
-		episodes := duplicates.Episodes(p)
-		if len(episodes) > 0 {
-			for _, id := range episodes {
-				go workers.Enqueue("delete-episode", "deleteEpisode", id)
-			}
+func duplicateEpisodes(message *workers.Msg) {
+	p := database.NewPostgresql()
+	episodes := duplicates.Episodes(p)
+	p.Close()
+	if len(episodes) > 0 {
+		for _, id := range episodes {
+			go workers.Enqueue("delete-episode", "deleteEpisode", id)
 		}
-		workers.Enqueue("duplicate-episodes", "duplicateEpisodes", nil)
 	}
+
+	workers.Enqueue("duplicate-episodes", "duplicateEpisodes", nil)
 }
 
-func deleteEpisode(p gorm.DB) func(*workers.Msg) {
-	return func(message *workers.Msg) {
-		id, err := message.Args().Int64()
-		checkError(err)
+func deleteEpisode(message *workers.Msg) {
+	id, err := message.Args().Int64()
+	checkError(err)
 
-		p.Table(models.Episode{}.TableName()).Where("id = ?", id).Delete(models.Episode{})
-	}
+	p := database.NewPostgresql()
+	p.Table(models.Episode{}.TableName()).Where("id = ?", id).Delete(models.Episode{})
+	p.Close()
 }
 
 //

@@ -51,10 +51,7 @@ func organizeDuplicates(episodes []episode) map[string][]episode {
 		if len(duplicateEpisodes[key]) == 0 {
 			duplicateEpisodes[key] = make([]episode, 0)
 		}
-		log.Println(" ---------<<>>>----- org", e.Title)
-
 		duplicateEpisodes[key] = append(duplicateEpisodes[key], e)
-
 	}
 	return duplicateEpisodes
 }

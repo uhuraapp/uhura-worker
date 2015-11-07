@@ -155,7 +155,6 @@ func reporter(message *workers.Msg) {
 func duplicateEpisodes(p gorm.DB) func(*workers.Msg) {
 	return func(message *workers.Msg) {
 		episodes := duplicates.Episodes(p)
-		log.Println("Dup episodes", episodes)
 		if len(episodes) > 0 {
 			for _, id := range episodes {
 				go workers.Enqueue("delete-episode", "deleteEpisode", id)

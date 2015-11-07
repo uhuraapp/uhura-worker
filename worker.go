@@ -78,6 +78,7 @@ func main() {
 		}
 	}()
 
+	workers.Enqueue("duplicate-episodes", "duplicateEpisodes", nil)
 	// workers.Enqueue("recommendations", "recommendations", nil)
 	workers.Run()
 }

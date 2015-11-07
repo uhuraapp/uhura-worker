@@ -37,7 +37,7 @@ func Episodes(DB gorm.DB) []int64 {
 		}
 	}
 
-	log.Println("TO DELETE", episodesToDelete)
+	log.Println("TO DELETE LEN", len(episodesToDelete))
 
 	return episodesToDelete
 }

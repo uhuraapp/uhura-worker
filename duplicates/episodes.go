@@ -20,7 +20,7 @@ type episode struct {
 func Episodes(DB gorm.DB) []int64 {
 	var episodes []episode
 
-	DB.Table(models.Episode{}.TableName()).Select("items.title as title, o.dupeCount as count, items.id as id").Joins("INNER JOIN (SELECT title, channel_id, COUNT(*) as dupeCount FROM items GROUP BY title,channel_id HAVING COUNT(*) > 1) o on o.title = items.title AND o.channel_id = items.channel_id").Limit(10).Scan(&episodes)
+	DB.Table(models.Episode{}.TableName()).Select("items.title as title, o.dupeCount as count, items.id as id").Joins("INNER JOIN (SELECT title, channel_id, COUNT(*) as dupeCount FROM items GROUP BY title,channel_id HAVING COUNT(*) > 1) o on o.title = items.title AND o.channel_id = items.channel_id").Limit(20).Scan(&episodes)
 
 	log.Println("SQL FOUND DUP", episodes)
 	organizedEpisodes := organizeDuplicates(episodes)
@@ -29,11 +29,15 @@ func Episodes(DB gorm.DB) []int64 {
 	episodesToDelete := make([]int64, 0)
 	for _, es := range organizedEpisodes {
 		e, others := lastAndOthersEpisodes(es)
+		log.Println("--- FIRST: ", e)
+		log.Println("--- OTHERS: ", others)
 		updatePlays(e, others, DB)
 		for _, other := range others {
 			episodesToDelete = append(episodesToDelete, other.ID)
 		}
 	}
+
+	log.Println("TO DELETE", episodesToDelete)
 
 	return episodesToDelete
 }
@@ -60,6 +64,8 @@ func updatePlays(e episode, others []episode, DB gorm.DB) {
 		otherPlays := getPlays(o, DB)
 		plays = append(plays, otherPlays...)
 	}
+
+	log.Println(" ---------- plays", plays)
 
 	for _, l := range plays {
 		DB.Table(models.Listened{}.TableName()).Where("id = ?", l.Id).Update("item_id", e.ID)

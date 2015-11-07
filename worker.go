@@ -163,7 +163,10 @@ func duplicateEpisodes(p gorm.DB) func(*workers.Msg) {
 		episodes := duplicates.Episodes(p)
 		log.Println("Dup episodes", episodes)
 		if len(episodes) > 0 {
-			p.Table(models.Episode{}.TableName()).Where("id in (?)", episodes).Delete(models.Episode{})
+			// To avoid bug delete one a one
+			for _, id := range episodes {
+				p.Table(models.Episode{}.TableName()).Where("id in (?)", id).Delete(models.Episode{})
+			}
 		}
 		workers.Enqueue("duplicate-episodes", "duplicateEpisodes", nil)
 	}

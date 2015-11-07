@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"time"
 
 	"gopkg.in/redis.v3"
 
@@ -159,7 +160,7 @@ func duplicateEpisodes(message *workers.Msg) {
 		}
 	}
 
-	workers.Enqueue("duplicate-episodes", "duplicateEpisodes", nil)
+	workers.EnqueueAt("duplicate-episodes", "duplicateEpisodes", time.Now().Add(time.Hour*1), nil)
 }
 
 func deleteEpisode(message *workers.Msg) {

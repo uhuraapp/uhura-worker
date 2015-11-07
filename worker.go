@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/url"
 	"os"
 	"strconv"
@@ -105,11 +106,14 @@ func recommendations(db gorm.DB) func(*workers.Msg) {
 			var subscriptions []models.Subscription
 			p.Table(models.Subscription{}.TableName()).Where("user_id = ?", users[i]).Find(&subscriptions)
 			userID := too.User(strconv.Itoa(int(users[i])))
+			log.Println("too", userID)
 
 			for j := 0; j < len(subscriptions); j++ {
 				channelID := too.Item(strconv.Itoa(int(subscriptions[j].ChannelId)))
-				te.Likes.Add(userID, channelID)
+				log.Println("too", channelID)
+				log.Println("too", te.Likes.Add(userID, channelID))
 			}
+			log.Println("too", "--------------------------")
 		}
 
 		workers.EnqueueAt("recommendations", "recommendations", time.Now().Add(5*time.Minute), nil)

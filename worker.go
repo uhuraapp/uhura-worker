@@ -162,8 +162,9 @@ func duplicateEpisodes(p gorm.DB) func(*workers.Msg) {
 		defer reporter(message)
 		episodes := duplicates.Episodes(p)
 		log.Println("Dup episodes", episodes)
-		p.Table(models.Episode{}.TableName()).Where("id in (?)", episodes).Delete(models.Episode{})
-
+		if len(episodes) {
+			p.Table(models.Episode{}.TableName()).Where("id in (?)", episodes).Delete(models.Episode{})
+		}
 		workers.Enqueue("duplicate-episodes", "duplicateEpisodes", nil)
 	}
 }

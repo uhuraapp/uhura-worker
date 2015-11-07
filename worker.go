@@ -60,24 +60,25 @@ func main() {
 	// workers.Process("sync-low", syncLow(p), 4)
 	workers.Process("duplicate-episodes", duplicateEpisodes(p), 3)
 	// workers.Process("orphan-channel", orphanChannel(p), 2)
-	workers.Process("delete-episode", deleteEpisode(p), 3)
-	workers.Process("recommendations", recommendations(p), 1)
+	// workers.Process("delete-episode", deleteEpisode(p), 3)
+	// workers.Process("recommendations", recommendations(p), 1)
 
 	port, _ := strconv.Atoi(os.Getenv("PORT"))
 
 	go workers.StatsServer(port)
 
 	go func() {
-		workers.Enqueue("orphan-channel", "orphanChannel", nil)
+		// workers.Enqueue("orphan-channel", "orphanChannel", nil)
 
 		var c []int64
-		p.Table(models.Channel{}.TableName()).Pluck("id", &c)
+		// p.Table(models.Channel{}.TableName()).Pluck("id", &c)
 		for _, id := range c {
-			workers.Enqueue("sync-low", "sync", id)
+			log.Println(id)
+			// workers.Enqueue("sync-low", "sync", id)
 		}
 	}()
 
-	workers.Enqueue("recommendations", "recommendations", nil)
+	// workers.Enqueue("recommendations", "recommendations", nil)
 	workers.Run()
 }
 
@@ -162,7 +163,7 @@ func duplicateEpisodes(p gorm.DB) func(*workers.Msg) {
 
 		episodes := duplicates.Episodes(p)
 		for _, id := range episodes {
-			workers.Enqueue("delete-episode", "deleteEpisode", id)
+			p.Table(models.Episode{}.TableName()).Where("id = ?", id).Delete(models.Episode{})
 		}
 	}
 }

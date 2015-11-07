@@ -46,18 +46,25 @@ func Episodes(DB gorm.DB) []int64 {
 func organizeDuplicates(episodes []episode) map[string][]episode {
 	duplicateEpisodes := make(map[string][]episode)
 	for _, e := range episodes {
-		if len(duplicateEpisodes[e.Title]) == 0 {
-			duplicateEpisodes[e.Title] = make([]episode, 0)
-		}
+		key := strings.ToLower(e.Title)
 
-		duplicateEpisodes[strings.ToLower(e.Title)] = append(duplicateEpisodes[e.Title], e)
+		if len(duplicateEpisodes[key]) == 0 {
+			duplicateEpisodes[key] = make([]episode, 0)
+		}
+		log.Println(" ---------<<>>>----- org", e.Title)
+
+		duplicateEpisodes[key] = append(duplicateEpisodes[key], e)
+
 	}
 	return duplicateEpisodes
 }
 
 func lastAndOthersEpisodes(episodes []episode) (episode, []episode) {
 	sort.Sort(episodeByID(episodes))
-	newEpisodes := episodes[:len(episodes)-1]
+	var newEpisodes []episode
+	if len(episodes) > 1 {
+		newEpisodes = episodes[:len(episodes)-1]
+	}
 	// check source
 	return episodes[len(episodes)-1], newEpisodes
 }

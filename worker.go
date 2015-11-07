@@ -152,13 +152,23 @@ func reporter(message *workers.Msg) {
 
 func duplicateEpisodes(message *workers.Msg) {
 	p := database.NewPostgresql()
-	episodes := duplicates.Episodes(p)
-	p.Close()
-	if len(episodes) > 0 {
-		for _, id := range episodes {
-			go workers.Enqueue("delete-episode", "deleteEpisode", id)
+	del := make(chan int64)
+	cl := make(chan bool)
+
+	go func() {
+		for {
+			select {
+			case id := <-del:
+				workers.Enqueue("delete-episode", "deleteEpisode", id)
+			case <-cl:
+				return
+			}
 		}
-	}
+	}()
+
+	duplicates.Episodes(p, del, cl)
+
+	p.Close()
 
 	workers.EnqueueAt("duplicate-episodes", "duplicateEpisodes", time.Now().Add(time.Hour*1), nil)
 }

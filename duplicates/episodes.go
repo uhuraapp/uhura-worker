@@ -17,7 +17,7 @@ type episode struct {
 }
 
 // Episodes find duplicated episodes
-func Episodes(DB gorm.DB) []int64 {
+func Episodes(DB gorm.DB, del chan int64, cl chan bool) {
 	var episodes []episode
 
 	DB.Table(models.Episode{}.TableName()).Select("items.title as title, o.dupeCount as count, items.id as id").Joins("INNER JOIN (SELECT title, channel_id, COUNT(*) as dupeCount FROM items GROUP BY title,channel_id HAVING COUNT(*) > 1) o on o.title = items.title AND o.channel_id = items.channel_id").Scan(&episodes)
@@ -26,20 +26,17 @@ func Episodes(DB gorm.DB) []int64 {
 	organizedEpisodes := organizeDuplicates(episodes)
 	log.Println("ORGIZED", organizedEpisodes)
 
-	episodesToDelete := make([]int64, 0, 50)
 	for _, es := range organizedEpisodes {
 		e, others := lastAndOthersEpisodes(es)
 		log.Println("--- FIRST: ", e)
 		log.Println("--- OTHERS: ", others)
 		updatePlays(e, others, DB)
 		for _, other := range others {
-			episodesToDelete = append(episodesToDelete, other.ID)
+			del <- other.ID
 		}
 	}
 
-	log.Println("TO DELETE LEN", len(episodesToDelete))
-
-	return episodesToDelete
+	cl <- true
 }
 
 //

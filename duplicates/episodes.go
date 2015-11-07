@@ -71,22 +71,29 @@ func lastAndOthersEpisodes(episodes []episode) (episode, []episode) {
 
 func updatePlays(e episode, others []episode, DB gorm.DB) {
 	var ids []int64
+	var playsIDs []int64
+
 	for _, o := range others {
 		ids = append(ids, o.ID)
 	}
 
 	plays := getPlays(ids, DB)
 
-	log.Println(" ---------- plays", plays)
+	for _, p := range plays {
+		playsIDs = append(playsIDs, p.Id)
+	}
 
-	for _, l := range plays {
-		DB.Table(models.Listened{}.TableName()).Where("id = ?", l.Id).Update("item_id", e.ID)
+	log.Println(" ---------- plays", playsIDs)
+	if len(playsIDs) > 0 {
+		DB.Table(models.Listened{}.TableName()).Where("id in (?)", playsIDs).Update("item_id", e.ID)
 	}
 }
 
 func getPlays(ids []int64, DB gorm.DB) []models.Listened {
 	plays := make([]models.Listened, 0)
-	DB.Table(models.Listened{}.TableName()).Where("item_id in (?)", ids).Find(&plays)
+	if len(ids) > 0 {
+		DB.Table(models.Listened{}.TableName()).Where("item_id in (?)", ids).Find(&plays)
+	}
 	return plays
 }
 

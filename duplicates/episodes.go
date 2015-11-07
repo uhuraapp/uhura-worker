@@ -20,7 +20,7 @@ type episode struct {
 func Episodes(DB gorm.DB) []int64 {
 	var episodes []episode
 
-	DB.Table(models.Episode{}.TableName()).Select("items.title as title, o.dupeCount as count, items.id as id").Joins("INNER JOIN (SELECT title, channel_id, COUNT(*) as dupeCount FROM items GROUP BY title,channel_id HAVING COUNT(*) > 1) o on o.title = items.title AND o.channel_id = items.channel_id").Scan(&episodes)
+	DB.Table(models.Episode{}.TableName()).Select("items.title as title, o.dupeCount as count, items.id as id").Joins("INNER JOIN (SELECT title, channel_id, COUNT(*) as dupeCount FROM items GROUP BY title,channel_id HAVING COUNT(*) > 1) o on o.title = items.title AND o.channel_id = items.channel_id").Limit(200).Scan(&episodes)
 
 	log.Println("SQL FOUND DUP", episodes)
 	organizedEpisodes := organizeDuplicates(episodes)

@@ -13,7 +13,9 @@ import (
 	"bitbucket.org/dukex/uhura-api/database"
 	"bitbucket.org/dukex/uhura-api/models"
 	duplicates "bitbucket.org/dukex/uhura-worker/duplicates"
+	syncRunner "bitbucket.org/dukex/uhura-worker/sync"
 
+	"github.com/jinzhu/gorm"
 	"github.com/jrallison/go-workers"
 	"github.com/stvp/rollbar"
 )
@@ -115,22 +117,22 @@ func reporter(message *workers.Msg) {
 // 	}
 // }
 //
-// func syncLow(p gorm.DB) func(*workers.Msg) {
-// 	return func(message *workers.Msg) {
-//
-// 		defer reporter(message)
-//
-// 		id, err := message.Args().Int64()
-// 		checkError(err)
-//
-// 		s := syncRunner.NewSync(id)
-// 		s.Sync(p)
-//
-// 		workers.EnqueueAt("sync-low", "sync", time.Now().Add(5*time.Minute), id)
-// 		workers.Enqueue("orphan-channel", "orphanChannel", nil)
-// 	}
-// }
-//
+func syncLow(p gorm.DB) func(*workers.Msg) {
+	return func(message *workers.Msg) {
+
+		defer reporter(message)
+
+		id, err := message.Args().Int64()
+		checkError(err)
+
+		s := syncRunner.NewSync(id)
+		s.Sync(p)
+
+		workers.EnqueueAt("sync-low", "sync", time.Now().Add(5*time.Minute), id)
+		workers.Enqueue("orphan-channel", "orphanChannel", nil)
+	}
+}
+
 // func sync(p gorm.DB) func(*workers.Msg) {
 // 	return func(message *workers.Msg) {
 //

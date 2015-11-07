@@ -31,7 +31,9 @@ func NewPostgresql() gorm.DB {
 	database.DB().SetMaxIdleConns(10)
 	database.DB().SetMaxOpenConns(20)
 
-	Migrations(database)
+	if os.Getenv("MIGRATIONS") == "true" {
+		Migrations(database)
+	}
 
 	return database
 }

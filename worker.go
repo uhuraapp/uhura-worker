@@ -117,23 +117,7 @@ func reporter(message *workers.Msg) {
 // 	}
 // }
 //
-func syncLow(p gorm.DB) func(*workers.Msg) {
-	return func(message *workers.Msg) {
-
-		defer reporter(message)
-
-		id, err := message.Args().Int64()
-		checkError(err)
-
-		s := syncRunner.NewSync(id)
-		s.Sync(p)
-
-		workers.EnqueueAt("sync-low", "sync", time.Now().Add(5*time.Minute), id)
-		workers.Enqueue("orphan-channel", "orphanChannel", nil)
-	}
-}
-
-// func sync(p gorm.DB) func(*workers.Msg) {
+// func syncLow(p gorm.DB) func(*workers.Msg) {
 // 	return func(message *workers.Msg) {
 //
 // 		defer reporter(message)
@@ -144,46 +128,10 @@ func syncLow(p gorm.DB) func(*workers.Msg) {
 // 		s := syncRunner.NewSync(id)
 // 		s.Sync(p)
 //
-// 		nextRunAt, err := s.GetNextRun()
-// 		checkError(err)
-//
-// 		workers.EnqueueAt("sync", "sync", nextRunAt, id)
+// 		workers.EnqueueAt("sync-low", "sync", time.Now().Add(5*time.Minute), id)
 // 		workers.Enqueue("orphan-channel", "orphanChannel", nil)
 // 	}
 // }
-
-func duplicateEpisodes(message *workers.Msg) {
-	p := database.NewPostgresql()
-	del := make(chan int64)
-	cl := make(chan bool)
-
-	go func() {
-		for {
-			select {
-			case id := <-del:
-				workers.Enqueue("delete-episode", "deleteEpisode", id)
-			case <-cl:
-				return
-			}
-		}
-	}()
-
-	duplicates.Episodes(p, del, cl)
-
-	p.Close()
-
-	workers.EnqueueAt("duplicate-episodes", "duplicateEpisodes", time.Now().Add(time.Hour*1), nil)
-}
-
-func deleteEpisode(message *workers.Msg) {
-	id, err := message.Args().Int64()
-	checkError(err)
-
-	p := database.NewPostgresql()
-	p.Table(models.Episode{}.TableName()).Where("id = ?", id).Delete(models.Episode{})
-	p.Close()
-}
-
 //
 // func orphanChannel(p gorm.DB) func(*workers.Msg) {
 // 	return func(message *workers.Msg) {

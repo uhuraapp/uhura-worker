@@ -62,7 +62,7 @@ func main() {
 	go workers.StatsServer(port)
 
 	go func() {
-		// workers.Enqueue("orphan-channel", "orphanChannel", nil)
+		workers.Enqueue("orphan-channel", "orphanChannel", 0)
 
 		var c []int64
 
@@ -114,29 +114,6 @@ func reporter(message *workers.Msg) {
 // 		}
 //
 // 		workers.EnqueueAt("recommendations", "recommendations", time.Now().Add(12*time.Hour), nil)
-// 	}
-// }
-
-// func orphanChannel(p gorm.DB) func(*workers.Msg) {
-// 	return func(message *workers.Msg) {
-//
-// 		defer reporter(message)
-//
-// 		var channels []models.Channel
-// 		p.Table(models.Channel{}.TableName()).Find(&channels)
-//
-// 		for _, channel := range channels {
-// 			var users []models.Subscription
-// 			p.Table(models.Subscription{}.TableName()).Where("channel_id = ?", channel.Id).Find(&users)
-// 			if len(users) < 1 {
-// 				var episodes []models.Episode
-// 				p.Table(models.Episode{}.TableName()).Where("channel_id = ?", channel.Id).Find(&episodes)
-// 				for _, e := range episodes {
-// 					workers.Enqueue("delete-episode", "deleteEpisode", e.Id)
-// 				}
-// 				p.Table(models.Channel{}.TableName()).Where("id = ?", channel.Id).Delete(models.Channel{})
-// 			}
-// 		}
 // 	}
 // }
 

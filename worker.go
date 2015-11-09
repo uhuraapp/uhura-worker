@@ -2,20 +2,15 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net/url"
 	"os"
 	"strconv"
-	"time"
-
-	"gopkg.in/redis.v3"
 
 	"bitbucket.org/dukex/uhura-api/database"
 	"bitbucket.org/dukex/uhura-api/models"
-	duplicates "bitbucket.org/dukex/uhura-worker/duplicates"
-	syncRunner "bitbucket.org/dukex/uhura-worker/sync"
 
-	"github.com/jinzhu/gorm"
+	"gopkg.in/redis.v3"
+
 	"github.com/jrallison/go-workers"
 	"github.com/stvp/rollbar"
 )
@@ -55,12 +50,12 @@ func main() {
 		"process":  "1",
 	})
 
-	// heroku support 20 connections
-	// workers.Process("sync", sync(p), 2)
-	// workers.Process("sync-low", syncLow(p), 4)
 	workers.Process("duplicate-episodes", duplicateEpisodes, 1)
+	workers.Process("delete-episode", deleteEpisode, 2)
+	workers.Process("sync-low", syncLow, 12)
+
+	// workers.Process("sync", sync, 1)
 	// workers.Process("orphan-channel", orphanChannel(p), 2)
-	workers.Process("delete-episode", deleteEpisode, 10)
 	// workers.Process("recommendations", recommendations(p), 1)
 
 	port, _ := strconv.Atoi(os.Getenv("PORT"))
@@ -71,11 +66,14 @@ func main() {
 		// workers.Enqueue("orphan-channel", "orphanChannel", nil)
 
 		var c []int64
-		// p.Table(models.Channel{}.TableName()).Pluck("id", &c)
+
+		p := database.NewPostgresql()
+		p.Table(models.Channel{}.TableName()).Pluck("id", &c)
 		for _, id := range c {
-			log.Println(id)
-			// workers.Enqueue("sync-low", "sync", id)
+			workers.Enqueue("sync-low", "sync-low", id)
 		}
+
+		p.Close()
 	}()
 
 	workers.Enqueue("duplicate-episodes", "duplicateEpisodes", nil)

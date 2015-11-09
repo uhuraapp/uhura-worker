@@ -52,9 +52,8 @@ func main() {
 
 	workers.Process("duplicate-episodes", duplicateEpisodes, 1)
 	workers.Process("delete-episode", deleteEpisode, 2)
-	workers.Process("sync-low", syncLow, 12)
-
-	// workers.Process("sync", sync, 1)
+	workers.Process("sync-low", syncLow, 8)
+	workers.Process("sync", sync, 7)
 	// workers.Process("orphan-channel", orphanChannel(p), 2)
 	// workers.Process("recommendations", recommendations(p), 1)
 
@@ -70,7 +69,7 @@ func main() {
 		p := database.NewPostgresql()
 		p.Table(models.Channel{}.TableName()).Pluck("id", &c)
 		for _, id := range c {
-			workers.Enqueue("sync-low", "sync-low", id)
+			workers.Enqueue("sync", "sync", id)
 		}
 
 		p.Close()
@@ -117,23 +116,7 @@ func reporter(message *workers.Msg) {
 // 		workers.EnqueueAt("recommendations", "recommendations", time.Now().Add(12*time.Hour), nil)
 // 	}
 // }
-//
-// func syncLow(p gorm.DB) func(*workers.Msg) {
-// 	return func(message *workers.Msg) {
-//
-// 		defer reporter(message)
-//
-// 		id, err := message.Args().Int64()
-// 		checkError(err)
-//
-// 		s := syncRunner.NewSync(id)
-// 		s.Sync(p)
-//
-// 		workers.EnqueueAt("sync-low", "sync", time.Now().Add(5*time.Minute), id)
-// 		workers.Enqueue("orphan-channel", "orphanChannel", nil)
-// 	}
-// }
-//
+
 // func orphanChannel(p gorm.DB) func(*workers.Msg) {
 // 	return func(message *workers.Msg) {
 //

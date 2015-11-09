@@ -2,6 +2,7 @@ package sync
 
 import (
 	"errors"
+	"log"
 	"math/rand"
 	"net/http"
 	"net/url"
@@ -10,7 +11,6 @@ import (
 	"time"
 
 	"github.com/jinzhu/gorm"
-	"github.com/stvp/rollbar"
 
 	"bitbucket.org/dukex/uhura-api/channels"
 	"bitbucket.org/dukex/uhura-api/helpers"
@@ -32,133 +32,101 @@ var (
 	dateRFC822Extedend              = regexp.MustCompile(`^\d{2}.\w{3}.\d{4}.\d{2}:\d{2}:\d{2}.-\d{4}`)
 )
 
-// Sync channel Class
-type Sync struct {
-	channelID int64
-	model     *models.Channel
-	feed      *parser.Channel
-}
+func Sync(channelID int64, p gorm.DB) (model models.Channel, feed parser.Channel) {
+	model = getModel(channelID, p)
 
-// NewSync Create new instance of Sync
-func NewSync(channelID int64) Sync {
-	return Sync{
-		channelID: channelID,
-	}
-}
+	if model.Enabled {
+		_feed := getFeed(model)
+		if _feed == nil {
+			model.Enabled = false
+		} else {
+			feed = *_feed
+			model = translate(model, feed)
+			model = cacheImage(model)
 
-// Sync syncronization
-func (s *Sync) Sync(p gorm.DB) {
-	s.defineModel(p)
-	if s.model.Enabled {
-		s.defineFeed()
-		s.update()
-		s.cacheImage()
-		s.save(p)
-		hasNewEpisodes := s.episodes(p)
-		if hasNewEpisodes {
-			s.touchChannel(p)
+			createLinks(feed, model, p)
+			episodes := getEpisodes(feed, model)
+			log.Println(episodes)
+
+			for _, episode := range episodes {
+				saveEpisode(episode, p)
+			}
+
+			createCategory(feed, model, p)
 		}
-		s.createCategory(p)
+		p.Save(model)
 	}
+
+	return model, feed
 }
 
-func (s *Sync) defineModel(p gorm.DB) {
-	var model models.Channel
-	err := p.Table(models.Channel{}.TableName()).First(&model, s.channelID).Error
+func getModel(id int64, p gorm.DB) (model models.Channel) {
+	err := p.Table(models.Channel{}.TableName()).First(&model, id).Error
 	checkError(err)
-	s.model = &model
+
+	return model
 }
 
-func (s *Sync) defineFeed() {
-	channelURL, err := url.Parse(s.model.Url)
+func getFeed(model models.Channel) *parser.Channel {
+	channelURL, err := url.Parse(model.Url)
 	checkError(err)
 
-	channelsFeed, _errors := parser.URL(channelURL)
-	if len(_errors) > 0 {
-		panic(_errors[0])
+	channelsFeed, parserError := parser.URL(channelURL)
+	if parserError != nil {
+		if parserError.Error() == "Status is 404 Not Found" {
+			return nil
+		} else {
+			panic(parserError.Error())
+		}
 	}
 
 	if len(channelsFeed) == 0 {
-		panic(errors.New("no channels - " + channelURL.String()))
+		panic(errors.New("Not found channel in " + channelURL.String()))
 	}
 
-	s.feed = channelsFeed[0]
+	return channelsFeed[0]
 }
 
-func (s *Sync) update() {
-	channels.TranslateFromFeed(s.model, s.feed)
+func translate(model models.Channel, feed parser.Channel) models.Channel {
+	return channels.TranslateFromFeed(model, &feed)
 }
 
-func (s *Sync) cacheImage() {
-	currentImageURL := s.model.ImageUrl
+func cacheImage(model models.Channel) models.Channel {
+	currentImageURL := model.ImageUrl
 
 	if imageHostRegEx.MatchString(currentImageURL) {
-		return
+		return model
 	}
 
 	imageHost := random(imageHosts)
 	resp, err := http.Get(imageHost + "/resolve?url=" + currentImageURL)
 	if err != nil {
-		return
+		return model
 	}
 
 	newImageURL := resp.Request.URL.String()
 
 	if resp.StatusCode == 200 && strings.Contains(newImageURL, imageHost+"/cache") {
-		s.model.ImageUrl = newImageURL
-	}
-}
-
-func (s *Sync) save(p gorm.DB) {
-	p.Save(s.model)
-	channels.CreateLinks(r(s.feed.Links), s.model.Id, p)
-}
-
-func (s *Sync) episodes(p gorm.DB) bool {
-	hasNewEpisodes := false
-
-	for _, data := range s.feed.Episodes {
-		episode, err := s.buildEpisode(data)
-		if err == nil {
-			if s.saveEpisode(p, episode) {
-				hasNewEpisodes = true
-			}
-		} else {
-			rollbar.Message("warning", err.Error())
-		}
+		model.ImageUrl = newImageURL
 	}
 
-	return hasNewEpisodes
+	return model
 }
 
-func (s *Sync) touchChannel(p gorm.DB) {
-	s.model.UpdatedAt = time.Now()
-	p.Save(s.model)
+func createLinks(feed parser.Channel, model models.Channel, p gorm.DB) {
+	channels.CreateLinks(unique(feed.Links), model.Id, p)
 }
 
-func (s *Sync) saveEpisode(p gorm.DB, episode models.Episode) bool {
-	var tEpisode models.Episode
-	err := p.Table(models.Episode{}.TableName()).
-		Where("source_url = ?", episode.SourceUrl).First(&tEpisode).Error
+func getEpisodes(feed parser.Channel, model models.Channel) []models.Episode {
+	episodes := make([]models.Episode, 0)
 
-	if err == gorm.RecordNotFound {
-		err = p.Table(models.Episode{}.TableName()).
-			Where("key = ?", episode.Key).
-			Assign(episode).
-			FirstOrCreate(&episode).Error
-
-		checkError(err)
-
-		return p.NewRecord(episode)
-	} else {
-		if err != nil {
-			rollbar.Message("warning", err.Error())
-		}
-		return false
+	for _, data := range feed.Episodes {
+		episodes = append(episodes, buildEpisode(data, model))
 	}
+	return episodes
 }
 
-func (s Sync) buildEpisode(data *parser.Episode) (models.Episode, error) {
+func buildEpisode(data *parser.Episode, model models.Channel) models.Episode {
 	description := data.Summary
 	if description == "" {
 		description = data.Description
@@ -171,7 +139,7 @@ func (s Sync) buildEpisode(data *parser.Episode) (models.Episode, error) {
 	if data.Feed.PubDate != "" {
 		publishedAt, err = data.Feed.ParsedPubDate()
 		if err != nil {
-			publishedAt, err = s.fixPubDate(data)
+			publishedAt, err = fixPubDate(data)
 			checkError(err)
 		}
 	}
@@ -192,14 +160,14 @@ func (s Sync) buildEpisode(data *parser.Episode) (models.Episode, error) {
 		Uri:           helpers.MakeUri(data.Title),
 		Title:         data.Title,
 		SourceUrl:     data.Source,
-		ChannelId:     s.model.Id,
+		ChannelId:     model.Id,
 		PublishedAt:   publishedAt,
 		ContentType:   audioData.ContentType,
 		ContentLength: audioData.ContentLength,
-	}, nil
+	}
 }
 
-func (s Sync) fixPubDate(e *parser.Episode) (time.Time, error) {
+func fixPubDate(e *parser.Episode) (time.Time, error) {
 	pubDate := strings.Replace(e.PubDate, "-5GMT", "-0500", -1)
 	pubDate = strings.Replace(e.PubDate, "GMT", "-0100", -1)
 	pubDate = strings.Replace(pubDate, "PST", "-0800", -1)
@@ -217,17 +185,33 @@ func (s Sync) fixPubDate(e *parser.Episode) (time.Time, error) {
 	return time.Parse(episodePubDateFormat, pubDate)
 }
 
+func saveEpisode(episode models.Episode, p gorm.DB) models.Episode {
+	err := p.Table(models.Episode{}.TableName()).
+		Where("source_url = ?", episode.SourceUrl).First(&models.Episode{}).Error
+
+	if err == gorm.RecordNotFound {
+		err = p.Table(models.Episode{}.TableName()).
+			Where("key = ?", episode.Key).
+			Assign(episode).
+			FirstOrCreate(&episode).Error
+
+		checkError(err)
+	}
+
+	return episode
+}
+
 // GetNextRun returns the next run to channel
-func (s *Sync) GetNextRun() (time.Time, error) {
+func GetNextRun(feed parser.Channel) (time.Time, error) {
 	now := time.Now()
 
-	if len(s.feed.Episodes) > 1 {
-		last, errLast := s.feed.Episodes[0].Feed.ParsedPubDate()
+	if len(feed.Episodes) > 1 {
+		last, errLast := fixPubDate(feed.Episodes[0])
 		if errLast != nil {
 			return now, errLast
 		}
 
-		penultimate, errPenutimate := s.feed.Episodes[1].Feed.ParsedPubDate()
+		penultimate, errPenutimate := fixPubDate(feed.Episodes[1])
 		if errPenutimate != nil {
 			return now, errLast
 		}
@@ -246,37 +230,24 @@ func (s *Sync) GetNextRun() (time.Time, error) {
 	return now.Add(time.Hour * weekHours), nil
 }
 
-func (s *Sync) createCategory(p gorm.DB) {
-	for _, cat := range s.feed.Categories {
+func createCategory(feed parser.Channel, model models.Channel, p gorm.DB) {
+	for _, data := range feed.Categories {
 		var category models.Category
 
 		p.Table(models.Category{}.TableName()).
-			Where("name = ?", cat.Name).
+			Where("name = ?", data.Name).
 			FirstOrCreate(&category)
 
 		p.Table(models.Categoriable{}.TableName()).
-			Where("channel_id = ? AND category_id = ?", s.model.Id, category.Id).
+			Where("channel_id = ? AND category_id = ?", model.Id, category.Id).
 			FirstOrCreate(&models.Categoriable{})
 	}
-
 }
 
 func checkError(err error) {
 	if err != nil {
 		panic(err)
 	}
-}
-
-func r(s []string) []string {
-	m := map[string]bool{}
-	t := []string{}
-	for _, v := range s {
-		if _, seen := m[v]; !seen {
-			t = append(t, v)
-			m[v] = true
-		}
-	}
-	return t
 }
 
 func random(slice []string) string {
@@ -287,4 +258,16 @@ func random(slice []string) string {
 		slice[i], slice[j] = slice[j], slice[i]
 	}
 	return slice[0]
+}
+
+func unique(s []string) []string {
+	m := map[string]bool{}
+	t := []string{}
+	for _, v := range s {
+		if _, seen := m[v]; !seen {
+			t = append(t, v)
+			m[v] = true
+		}
+	}
+	return t
 }

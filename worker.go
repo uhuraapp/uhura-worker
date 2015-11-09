@@ -30,7 +30,10 @@ func main() {
 	rollbar.Token = os.Getenv("ROLLBAR_KEY")
 	rollbar.Environment = os.Getenv("ROLLBAR_ENV")
 
-	password, _ := redisURL.User.Password()
+	var password string
+	if redisURL.User != nil {
+		password, _ = redisURL.User.Password()
+	}
 
 	client := redis.NewClient(&redis.Options{
 		Addr:     redisURL.Host,

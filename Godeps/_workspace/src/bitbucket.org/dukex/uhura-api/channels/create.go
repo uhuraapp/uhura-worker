@@ -12,10 +12,10 @@ import (
 
 func Create(database gorm.DB, url string) (*entities.Channel, bool) {
 	channelURL, _ := helpers.ParseURL(url)
-	channels, errors := parser.URL(channelURL)
+	channels, err := parser.URL(channelURL)
 
-	if len(errors) > 0 {
-		log.Debug("errors: %s", errors)
+	if err != nil {
+		log.Debug("error: %s", err)
 		return nil, false
 	}
 
@@ -50,7 +50,7 @@ func Create(database gorm.DB, url string) (*entities.Channel, bool) {
 	return &channel, ok
 }
 
-func TranslateFromFeed(model *models.Channel, channel *parser.Channel) *models.Channel {
+func TranslateFromFeed(model models.Channel, channel *parser.Channel) models.Channel {
 	model.Title = channel.Title
 	model.Description = channel.Description
 	model.Copyright = channel.Copyright
@@ -63,10 +63,10 @@ func TranslateFromFeed(model *models.Channel, channel *parser.Channel) *models.C
 	return model
 }
 
-func translateChannel(channel *parser.Channel) *models.Channel {
+func translateChannel(channel *parser.Channel) models.Channel {
 	model := models.Channel{}
 	model.CreatedAt = time.Now()
-	return TranslateFromFeed(&model, channel)
+	return TranslateFromFeed(model, channel)
 }
 
 func CreateLinks(links []string, channelId int64, database gorm.DB) {

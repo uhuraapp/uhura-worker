@@ -86,11 +86,11 @@ func getFeed(model models.Channel) *parser.Channel {
 		}
 	}
 
-	if len(channelsFeed) == 0 {
+	if channelsFeed == nil {
 		panic(errors.New("Not found channel in " + channelURL.String()))
 	}
 
-	return channelsFeed[0]
+	return channelsFeed
 }
 
 func translate(model models.Channel, feed parser.Channel) models.Channel {

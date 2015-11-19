@@ -35,12 +35,6 @@ var (
 func Sync(channelID int64, p gorm.DB) (model models.Channel, feed parser.Channel) {
 	model = getModel(channelID, p)
 
-	defer func(p gorm.DB) {
-		if r := recover(); r != nil {
-			p.Close()
-		}
-	}(p)
-
 	if model.Enabled {
 		_feed := getFeed(model)
 		if _feed == nil {

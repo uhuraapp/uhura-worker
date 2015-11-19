@@ -5,6 +5,7 @@ import (
 
 	"bitbucket.org/dukex/uhura-api/database"
 	runner "bitbucket.org/dukex/uhura-worker/sync"
+	"github.com/jinzhu/gorm"
 	"github.com/jrallison/go-workers"
 )
 
@@ -29,8 +30,13 @@ func syncLow(message *workers.Msg) {
 }
 
 func syncer(id int64, scheduleNext bool) {
-
 	p := database.NewPostgresql()
+	defer func(p gorm.DB) {
+		if r := recover(); r != nil {
+			p.Close()
+		}
+	}(p)
+
 	_, model := runner.Sync(id, p)
 	p.Close()
 

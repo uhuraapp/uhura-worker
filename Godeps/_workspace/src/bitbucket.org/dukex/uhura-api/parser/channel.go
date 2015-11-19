@@ -55,7 +55,7 @@ func (c *Channel) Build() {
 	c.Author = c.value(c, "author")
 	c.Image = c.FixImage()
 	c.Links = c.GetLinks()
-	c.ID = c.GenerateID()
+	c.ID = c.URL
 	c.LastBuildDate = c.Feed.LastBuildDate
 
 	categories := c.attrs(c, "category", "text")

@@ -12,15 +12,10 @@ import (
 
 func Create(database gorm.DB, url string) (*entities.Channel, bool) {
 	channelURL, _ := helpers.ParseURL(url)
-	channels, err := parser.URL(channelURL)
+	channelF, err := parser.URL(channelURL)
 
 	if err != nil {
 		log.Debug("error: %s", err)
-		return nil, false
-	}
-
-	if len(channels) < 1 {
-		log.Debug("error: no channel found")
 		return nil, false
 	}
 
@@ -28,7 +23,6 @@ func Create(database gorm.DB, url string) (*entities.Channel, bool) {
 	var channel entities.Channel
 
 	log.Debug("no error found")
-	channelF := channels[0] // TODO: fix it
 
 	log.Debug("channel UhuraID: %s", channelF.UhuraID)
 	if channelF.UhuraID != "" {
@@ -44,10 +38,42 @@ func Create(database gorm.DB, url string) (*entities.Channel, bool) {
 		if ok {
 			database.Table(models.Channel{}.TableName()).First(&channel, model.Id)
 			go CreateLinks(channelF.Links, channel.Id, database)
+			// TODO: add to sync queue
 		}
 	}
 
 	return &channel, ok
+}
+
+func TranslateFromFeedToEntity(entity entities.Channel, channel *parser.Channel) entities.Channel {
+	entity.Uri = channel.ID
+	entity.Title = channel.Title
+	entity.Description = channel.Description
+	entity.Copyright = channel.Copyright
+	entity.ImageUrl = channel.Image
+	entity.UpdatedAt = time.Now()
+	return entity
+}
+
+func TranslateEpisodesFromFeedToEntity(channel *parser.Channel) ([]*entities.Episode, []int64) {
+	episodes := make([]*entities.Episode, 0)
+	ids := make([]int64, 0)
+
+	for i, episode := range channel.Episodes {
+		s := int64(0)
+		id := int64(i) + time.Now().Unix()
+		episodes = append(episodes, &entities.Episode{
+			Id:          id,
+			Title:       episode.Title,
+			Description: episode.Description,
+			SourceUrl:   episode.Source,
+			StoppedAt:   &s,
+			ChannelUri:  channel.ID,
+		})
+		ids = append(ids, id)
+	}
+
+	return episodes, ids
 }
 
 func TranslateFromFeed(model models.Channel, channel *parser.Channel) models.Channel {

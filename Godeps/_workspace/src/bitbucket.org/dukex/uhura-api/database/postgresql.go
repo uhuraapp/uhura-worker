@@ -13,7 +13,9 @@ func NewPostgresql() gorm.DB {
 	var database gorm.DB
 	var err error
 
-	databaseUrl, _ := pq.ParseURL(os.Getenv("DATABASE_URL"))
+	databaseUrl, e := pq.ParseURL(os.Getenv("DATABASE_URL"))
+	log.Println(e)
+	log.Println("Connecting " + databaseUrl + "...")
 	database, err = gorm.Open("postgres", databaseUrl)
 
 	if err != nil {

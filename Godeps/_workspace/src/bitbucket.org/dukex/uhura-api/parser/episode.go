@@ -27,6 +27,7 @@ type Episode struct {
 
 func (e *Episode) Build() bool {
 	if len(e.Feed.Enclosures) < 1 {
+		log.Debug("No enclosures")
 		return false
 	}
 
@@ -45,7 +46,9 @@ func (e *Episode) Build() bool {
 	}
 
 	if e.Source == "" {
+		log.Debug("No source")
 		return false
+
 	}
 
 	return true

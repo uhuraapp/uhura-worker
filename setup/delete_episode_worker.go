@@ -1,4 +1,4 @@
-package main
+package setup
 
 import (
 	"bitbucket.org/dukex/uhura-api/database"

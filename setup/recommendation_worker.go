@@ -39,10 +39,9 @@ func recommendations(message *workers.Msg) {
 			User:  user,
 			Items: items,
 		})
-		log.Println(ops)
 	}
 
-	te.Likes.Batch(ops)
+	log.Println("recommendations", te.Likes.Batch(ops, true))
 
 	workers.EnqueueAt("recommendations", "recommendations", time.Now().Add(12*time.Hour), nil)
 }

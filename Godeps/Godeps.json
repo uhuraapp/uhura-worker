@@ -4,27 +4,27 @@
 	"Deps": [
 		{
 			"ImportPath": "bitbucket.org/dukex/uhura-api/channels",
-			"Rev": "0c65491f59ed763ddfceb431e4b75b52d00cf0d6"
+			"Rev": "e4c9c413a866469a7a8cf108bdfcb4ea751da3c8"
 		},
 		{
 			"ImportPath": "bitbucket.org/dukex/uhura-api/database",
-			"Rev": "0c65491f59ed763ddfceb431e4b75b52d00cf0d6"
+			"Rev": "e4c9c413a866469a7a8cf108bdfcb4ea751da3c8"
 		},
 		{
 			"ImportPath": "bitbucket.org/dukex/uhura-api/entities",
-			"Rev": "0c65491f59ed763ddfceb431e4b75b52d00cf0d6"
+			"Rev": "e4c9c413a866469a7a8cf108bdfcb4ea751da3c8"
 		},
 		{
 			"ImportPath": "bitbucket.org/dukex/uhura-api/helpers",
-			"Rev": "0c65491f59ed763ddfceb431e4b75b52d00cf0d6"
+			"Rev": "e4c9c413a866469a7a8cf108bdfcb4ea751da3c8"
 		},
 		{
 			"ImportPath": "bitbucket.org/dukex/uhura-api/models",
-			"Rev": "0c65491f59ed763ddfceb431e4b75b52d00cf0d6"
+			"Rev": "e4c9c413a866469a7a8cf108bdfcb4ea751da3c8"
 		},
 		{
 			"ImportPath": "bitbucket.org/dukex/uhura-api/parser",
-			"Rev": "0c65491f59ed763ddfceb431e4b75b52d00cf0d6"
+			"Rev": "e4c9c413a866469a7a8cf108bdfcb4ea751da3c8"
 		},
 		{
 			"ImportPath": "code.google.com/p/go-charset/charset",
@@ -69,11 +69,11 @@
 		},
 		{
 			"ImportPath": "github.com/garyburd/redigo/internal",
-			"Rev": "6ece6e0a09f28cc399b21550cbf37ab39ba63cce"
+			"Rev": "836b6e58b3358112c8291565d01c35b8764070d7"
 		},
 		{
 			"ImportPath": "github.com/garyburd/redigo/redis",
-			"Rev": "6ece6e0a09f28cc399b21550cbf37ab39ba63cce"
+			"Rev": "836b6e58b3358112c8291565d01c35b8764070d7"
 		},
 		{
 			"ImportPath": "github.com/gin-gonic/gin",
@@ -91,6 +91,10 @@
 		{
 			"ImportPath": "github.com/gorilla/sessions",
 			"Rev": "f61c3ec2cf65d69e7efedfd4d060fe128882c951"
+		},
+		{
+			"ImportPath": "github.com/hjr265/too",
+			"Rev": "a5838e29e09bc1153c3e30331fb0c1a08c789313"
 		},
 		{
 			"ImportPath": "github.com/jinzhu/gorm",

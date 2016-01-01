@@ -110,6 +110,7 @@ func (h *UserHelper) FindUserByToken(token string) (string, bool) {
 		Where("api_token = ? ", token).First(&u).Error
 
 	if err != nil {
+
 		return "", false
 	}
 	id := strconv.Itoa(int(u.Id))

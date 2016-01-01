@@ -56,10 +56,10 @@ func Worker(_redisURL string, runner bool) {
 
 		workers.Process("duplicate-episodes", duplicateEpisodes, 1)
 		workers.Process("delete-episode", deleteEpisode, 2)
-		workers.Process("sync-low", syncLow, 8)
+		workers.Process("sync-low", syncLow, 7)
 		workers.Process("sync", sync, 7)
 		// workers.Process("orphan-channel", orphanChannel(p), 2)
-		// workers.Process("recommendations", recommendations(p), 1)
+		workers.Process("recommendations", recommendations, 1)
 
 		port, _ := strconv.Atoi(os.Getenv("PORT"))
 
@@ -80,7 +80,7 @@ func Worker(_redisURL string, runner bool) {
 		}()
 
 		workers.Enqueue("duplicate-episodes", "duplicateEpisodes", nil)
-		// workers.Enqueue("recommendations", "recommendations", nil)
+		workers.Enqueue("recommendations", "recommendations", nil)
 		workers.Run()
 	}
 }

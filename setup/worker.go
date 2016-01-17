@@ -58,6 +58,7 @@ func Worker(_redisURL string, runner bool) {
 		workers.Process("delete-episode", deleteEpisode, 2)
 		workers.Process("sync-low", syncLow, 7)
 		workers.Process("sync", sync, 7)
+		workers.Process("language", language, 1)
 		// workers.Process("orphan-channel", orphanChannel(p), 2)
 		workers.Process("recommendations", recommendations, 1)
 
@@ -74,6 +75,7 @@ func Worker(_redisURL string, runner bool) {
 			p.Table(models.Channel{}.TableName()).Pluck("id", &c)
 			for _, id := range c {
 				workers.Enqueue("sync", "sync", id)
+				workers.Enqueue("language", "language", id)
 			}
 
 			p.Close()

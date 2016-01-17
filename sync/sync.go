@@ -33,7 +33,7 @@ var (
 )
 
 func Sync(channelID int64, p gorm.DB) (model models.Channel, feed parser.Channel) {
-	model = getModel(channelID, p)
+	model = GetModel(channelID, p)
 
 	if model.Enabled {
 		_feed := getFeed(model)
@@ -60,7 +60,7 @@ func Sync(channelID int64, p gorm.DB) (model models.Channel, feed parser.Channel
 	return model, feed
 }
 
-func getModel(id int64, p gorm.DB) (model models.Channel) {
+func GetModel(id int64, p gorm.DB) (model models.Channel) {
 	err := p.Table(models.Channel{}.TableName()).First(&model, id).Error
 	checkError(err)
 

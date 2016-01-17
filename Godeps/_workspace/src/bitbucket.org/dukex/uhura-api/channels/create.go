@@ -52,6 +52,7 @@ func TranslateFromFeedToEntity(entity entities.Channel, channel *parser.Channel)
 	entity.ImageUrl = channel.Image
 	entity.Uri = helpers.MakeUri(channel.Title)
 	entity.UpdatedAt = time.Now()
+	entity.Enabled = true
 	return entity
 }
 

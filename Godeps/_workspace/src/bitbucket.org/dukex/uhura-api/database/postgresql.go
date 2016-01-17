@@ -75,4 +75,7 @@ func Migrations(database gorm.DB) {
 	database.Model(&models.Profile{}).AddUniqueIndex("idx_profile_key", "key")
 	database.Model(&models.Profile{}).AddUniqueIndex("idx_profile_user_id", "user_id")
 	database.Model(&models.Profile{}).AddIndex("idx_profile_by_key", "key")
+
+	database.Exec("CREATE INDEX channel_search_idx ON channels USING gin(to_tsvector('english', title || ' ' || description))")
+	database.Exec("CREATE EXTENSION unaccent")
 }

@@ -3,6 +3,7 @@ package parser
 import (
 	"crypto/md5"
 	"encoding/hex"
+	"strings"
 
 	"bitbucket.org/dukex/uhura-api/helpers"
 	rss "github.com/jteeuwen/go-pkg-rss"
@@ -48,7 +49,7 @@ func (c *Channel) Build() {
 	c.Title = c.Feed.Title
 	c.Description = c.Feed.Description
 	c.Copyright = c.Feed.Copyright
-	c.Language = c.Feed.Language
+	c.Language = NormalizeLanguage(c.Feed.Language)
 	c.PubDate = c.Feed.PubDate
 	c.Subtitle = c.value(c, "subtitle")
 	c.Summary = c.value(c, "summary")
@@ -67,6 +68,37 @@ func (c *Channel) Build() {
 
 	log.Debug("%s", c.Feed.Links)
 	log.Debug("channel build finished: %s", c.Title)
+}
+
+var Languages = map[string]string{
+	"en": "english",
+	"pt": "portuguese",
+	"it": "italian",
+	"de": "deutch",
+	"fr": "french",
+	"ru": "russian",
+	"es": "spanish",
+	"jp": "japan",
+}
+
+func NormalizeLanguage(language string) string {
+	// Normalize word: remove spaces and downcase
+	language = strings.ToLower(strings.TrimSpace(language))
+
+	// remove region from language, so 'en-gb' -> en
+	_language := strings.Split(language, "-")
+	language = _language[0]
+
+	if language == "" {
+		// Default is english
+		return "english"
+	}
+
+	if newLanguage, ok := Languages[language]; ok {
+		return newLanguage
+	}
+
+	return language
 }
 
 // FixImage get correct image

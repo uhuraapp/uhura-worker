@@ -7,7 +7,7 @@ import (
 
 	"github.com/jinzhu/gorm"
 
-	"bitbucket.org/dukex/uhura-api/models"
+	"github.com/uhuraapp/uhura-api/models"
 )
 
 type episode struct {

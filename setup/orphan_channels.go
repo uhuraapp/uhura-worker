@@ -1,8 +1,8 @@
 package setup
 
 import (
-	"bitbucket.org/dukex/uhura-api/database"
-	"bitbucket.org/dukex/uhura-api/models"
+	"github.com/uhuraapp/uhura-api/database"
+	"github.com/uhuraapp/uhura-api/models"
 	"github.com/jrallison/go-workers"
 )
 

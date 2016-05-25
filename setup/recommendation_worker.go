@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"time"
 
-	"bitbucket.org/dukex/uhura-api/database"
-	"bitbucket.org/dukex/uhura-api/models"
+	"github.com/uhuraapp/uhura-api/database"
+	"github.com/uhuraapp/uhura-api/models"
 	"github.com/hjr265/too"
 	"github.com/jrallison/go-workers"
 )

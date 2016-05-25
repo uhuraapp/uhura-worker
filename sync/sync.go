@@ -12,10 +12,10 @@ import (
 
 	"github.com/jinzhu/gorm"
 
-	"bitbucket.org/dukex/uhura-api/channels"
-	"bitbucket.org/dukex/uhura-api/helpers"
-	"bitbucket.org/dukex/uhura-api/models"
-	"bitbucket.org/dukex/uhura-api/parser"
+	"github.com/uhuraapp/uhura-api/channels"
+	"github.com/uhuraapp/uhura-api/helpers"
+	"github.com/uhuraapp/uhura-api/models"
+	"github.com/uhuraapp/uhura-api/parser"
 )
 
 const (
@@ -32,7 +32,7 @@ var (
 	dateRFC822Extedend              = regexp.MustCompile(`^\d{2}.\w{3}.\d{4}.\d{2}:\d{2}:\d{2}.-\d{4}`)
 )
 
-func Sync(channelID int64, p gorm.DB) (model models.Channel, feed parser.Channel) {
+func Sync(channelID int64, p *gorm.DB) (model models.Channel, feed parser.Channel) {
 	model = GetModel(channelID, p)
 
 	if model.Enabled {
@@ -60,7 +60,7 @@ func Sync(channelID int64, p gorm.DB) (model models.Channel, feed parser.Channel
 	return model, feed
 }
 
-func GetModel(id int64, p gorm.DB) (model models.Channel) {
+func GetModel(id int64, p *gorm.DB) (model models.Channel) {
 	err := p.Table(models.Channel{}.TableName()).First(&model, id).Error
 	checkError(err)
 
@@ -113,7 +113,7 @@ func cacheImage(model models.Channel) models.Channel {
 	return model
 }
 
-func createLinks(feed parser.Channel, model models.Channel, p gorm.DB) {
+func createLinks(feed parser.Channel, model models.Channel, p *gorm.DB) {
 	channels.CreateLinks(unique(feed.Links), model.Id, p)
 }
 
@@ -185,11 +185,11 @@ func fixPubDate(e *parser.Episode) (time.Time, error) {
 	return time.Parse(episodePubDateFormat, pubDate)
 }
 
-func saveEpisode(episode models.Episode, p gorm.DB) models.Episode {
+func saveEpisode(episode models.Episode, p *gorm.DB) models.Episode {
 	err := p.Table(models.Episode{}.TableName()).
 		Where("source_url = ?", episode.SourceUrl).First(&models.Episode{}).Error
 
-	if err == gorm.RecordNotFound {
+	if err == gorm.ErrRecordNotFound {
 		err = p.Table(models.Episode{}.TableName()).
 			Where("key = ?", episode.Key).
 			Assign(episode).
@@ -230,7 +230,7 @@ func GetNextRun(feed parser.Channel) (time.Time, error) {
 	return now.Add(time.Hour * weekHours), nil
 }
 
-func createCategory(feed parser.Channel, model models.Channel, p gorm.DB) {
+func createCategory(feed parser.Channel, model models.Channel, p *gorm.DB) {
 	for _, data := range feed.Categories {
 		var category models.Category
 

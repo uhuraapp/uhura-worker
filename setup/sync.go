@@ -3,8 +3,8 @@ package setup
 import (
 	"time"
 
-	"bitbucket.org/dukex/uhura-api/database"
-	runner "bitbucket.org/dukex/uhura-worker/sync"
+	"github.com/uhuraapp/uhura-api/database"
+	runner "github.com/uhuraapp/uhura-worker/sync"
 	"github.com/jinzhu/gorm"
 	"github.com/jrallison/go-workers"
 )

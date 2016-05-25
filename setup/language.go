@@ -1,11 +1,11 @@
 package setup
 
 import (
-	"bitbucket.org/dukex/uhura-api/database"
-	"bitbucket.org/dukex/uhura-api/parser"
+	"github.com/uhuraapp/uhura-api/database"
+	"github.com/uhuraapp/uhura-api/parser"
 	"github.com/jinzhu/gorm"
 
-	runner "bitbucket.org/dukex/uhura-worker/sync"
+	runner "github.com/uhuraapp/uhura-worker/sync"
 	"github.com/jrallison/go-workers"
 )
 

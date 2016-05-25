@@ -3,10 +3,10 @@ package setup
 import (
 	"time"
 
-	"bitbucket.org/dukex/uhura-api/database"
+	"github.com/uhuraapp/uhura-api/database"
 	"github.com/jrallison/go-workers"
 
-	duplicates "bitbucket.org/dukex/uhura-worker/duplicates"
+	duplicates "github.com/uhuraapp/uhura-worker/duplicates"
 )
 
 func duplicateEpisodes(message *workers.Msg) {

@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"bitbucket.org/dukex/uhura-worker/setup"
+	"github.com/uhuraapp/uhura-worker/setup"
 )
 
 func main() {

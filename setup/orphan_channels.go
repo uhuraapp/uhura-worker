@@ -1,9 +1,9 @@
 package setup
 
 import (
+	"github.com/jrallison/go-workers"
 	"github.com/uhuraapp/uhura-api/database"
 	"github.com/uhuraapp/uhura-api/models"
-	"github.com/jrallison/go-workers"
 )
 
 func orphanChannel(message *workers.Msg) {
@@ -20,11 +20,6 @@ func orphanChannel(message *workers.Msg) {
 		var users []models.Subscription
 		p.Table(models.Subscription{}.TableName()).Where("channel_id = ?", channel.Id).Find(&users)
 		if len(users) < 1 {
-			var episodes []models.Episode
-			p.Table(models.Episode{}.TableName()).Where("channel_id = ?", channel.Id).Find(&episodes)
-			for _, e := range episodes {
-				workers.Enqueue("delete-episode", "deleteEpisode", e.Id)
-			}
 			p.Table(models.Channel{}.TableName()).Where("id = ?", channel.Id).Delete(models.Channel{})
 		}
 	}

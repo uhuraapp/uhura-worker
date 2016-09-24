@@ -7,5 +7,5 @@ import (
 )
 
 func main() {
-	setup.Worker(os.Getenv("REDIS_URL"), true)
+	setup.Worker(os.Getenv("REDIS_URL"))
 }

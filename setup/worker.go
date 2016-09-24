@@ -8,17 +8,13 @@ import (
 
 	"gopkg.in/redis.v3"
 
-	"github.com/uhuraapp/uhura-api/database"
-	"github.com/uhuraapp/uhura-api/models"
 	"github.com/jrallison/go-workers"
 	"github.com/stvp/rollbar"
+	"github.com/uhuraapp/uhura-api/database"
+	"github.com/uhuraapp/uhura-api/models"
 )
 
-func Worker(_redisURL string, runner bool) {
-	pool := "1"
-	if runner {
-		pool = "15"
-	}
+func Worker(_redisURL string) {
 	redisURL, err := url.Parse(_redisURL)
 
 	if err != nil {
@@ -37,54 +33,45 @@ func Worker(_redisURL string, runner bool) {
 		"server":   redisURL.Host,
 		"password": password,
 		"database": "0",
-		"pool":     pool,
+		"pool":     "15",
 		"process":  "1",
 	})
 
-	if runner {
-		client := redis.NewClient(&redis.Options{
-			Addr:     redisURL.Host,
-			Password: password, // no password set
-			DB:       0,        // use default DB
-		})
+	client := redis.NewClient(&redis.Options{
+		Addr:     redisURL.Host,
+		Password: password, // no password set
+		DB:       0,        // use default DB
+	})
 
-		pong, err := client.Ping().Result()
-		fmt.Println(pong, err)
+	pong, err := client.Ping().Result()
+	fmt.Println(pong, err)
 
-		client.FlushDb()
-		client.Close()
+	client.FlushDb()
+	client.Close()
 
-		workers.Process("duplicate-episodes", duplicateEpisodes, 1)
-		workers.Process("delete-episode", deleteEpisode, 2)
-		workers.Process("sync-low", syncLow, 7)
-		workers.Process("sync", sync, 7)
-		workers.Process("language", language, 1)
-		// workers.Process("orphan-channel", orphanChannel(p), 2)
-		workers.Process("recommendations", recommendations, 1)
+	workers.Process("sync", sync, 7)
 
-		port, _ := strconv.Atoi(os.Getenv("PORT"))
+	port, _ := strconv.Atoi(os.Getenv("PORT"))
 
-		go workers.StatsServer(port)
+	go workers.StatsServer(port)
 
-		go func() {
-			workers.Enqueue("orphan-channel", "orphanChannel", 0)
+	go func() {
+		workers.Enqueue("orphan-channel", "orphanChannel", 0)
 
-			var c []int64
+		var c []int64
 
-			p := database.NewPostgresql()
-			p.Table(models.Channel{}.TableName()).Pluck("id", &c)
-			for _, id := range c {
-				workers.Enqueue("sync", "sync", id)
-				workers.Enqueue("language", "language", id)
-			}
+		p := database.NewPostgresql()
+		p.Table(models.Channel{}.TableName()).Pluck("id", &c)
+		for _, id := range c {
+			workers.Enqueue("sync", "sync", id)
+		}
 
-			p.Close()
-		}()
+		p.Close()
+	}()
 
-		workers.Enqueue("duplicate-episodes", "duplicateEpisodes", nil)
-		workers.Enqueue("recommendations", "recommendations", nil)
-		workers.Run()
-	}
+	workers.Enqueue("duplicate-episodes", "duplicateEpisodes", nil)
+	workers.Enqueue("recommendations", "recommendations", nil)
+	workers.Run()
 }
 
 func reporter(message *workers.Msg) {
